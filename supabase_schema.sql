@@ -130,15 +130,15 @@ CREATE INDEX IF NOT EXISTS idx_workers_location_gin ON public.workers USING gin 
 
 
 -- SEED DATA (TRICHY CENTROIDS)
-INSERT INTO public.areas (id, name, pincode, latitude, longitude, zone) VALUES
-('area-kk-nagar'::uuid,     'KK Nagar',      '620021', 10.7905, 78.7118, 'Ponmalai Zone'),
-('area-thillai-nagar'::uuid,'Thillai Nagar', '620018', 10.8286, 78.6872, 'Abhishekapuram Zone'),
-('area-cantonment'::uuid,   'Cantonment',    '620001', 10.8122, 78.6865, 'Abhishekapuram Zone'),
-('area-srirangam'::uuid,    'Srirangam',     '620006', 10.8622, 78.6903, 'Srirangam Zone'),
-('area-kattur'::uuid,       'Kattur',        '620019', 10.7937, 78.7495, 'Golden Rock Zone'),
-('area-lalgudi'::uuid,      'Lalgudi',       '621601', 10.8667, 78.8167, 'Outskirts North'),
-('area-tiruverumbur'::uuid, 'Tiruverumbur',  '620013', 10.7925, 78.7678, 'Ponmalai Zone')
-ON CONFLICT DO NOTHING;
+INSERT INTO public.areas (name, pincode, latitude, longitude, zone) VALUES
+('KK Nagar',      '620021', 10.7905, 78.7118, 'Ponmalai Zone'),
+('Thillai Nagar', '620018', 10.8286, 78.6872, 'Abhishekapuram Zone'),
+('Cantonment',    '620001', 10.8122, 78.6865, 'Abhishekapuram Zone'),
+('Srirangam',     '620006', 10.8622, 78.6903, 'Srirangam Zone'),
+('Kattur',        '620019', 10.7937, 78.7495, 'Golden Rock Zone'),
+('Lalgudi',       '621601', 10.8667, 78.8167, 'Outskirts North'),
+('Tiruverumbur',  '620013', 10.7925, 78.7678, 'Ponmalai Zone')
+ON CONFLICT (name) DO NOTHING;
 
 
 -- SECURITY & RLS CONFIGURATION
