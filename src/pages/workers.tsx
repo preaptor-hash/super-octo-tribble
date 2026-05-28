@@ -112,22 +112,45 @@ export const Workers: React.FC = () => {
       
       const insertPayloads = [];
 
-      for (const row of rows as Record<string, string | number | null | undefined>[]) {
-        // Skip if phone number already exists
-        if (row.Phone && currentWorkers.some(w => w.phone === row.Phone)) {
+      // Helper to dynamically extract keys case-insensitively and space-insensitively
+      const getVal = (r: Record<string, unknown>, keyPattern: string) => {
+        const keys = Object.keys(r);
+        const foundKey = keys.find(k => {
+          const normalizedK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const normalizedPattern = keyPattern.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return normalizedK === normalizedPattern;
+        });
+        return foundKey ? r[foundKey] : undefined;
+      };
+
+      for (const row of rows as Record<string, unknown>[]) {
+        const rawPhone = getVal(row, 'phone');
+        let phoneStr = rawPhone !== undefined && rawPhone !== null ? String(rawPhone).trim() : null;
+        if (phoneStr && phoneStr.endsWith('.0')) {
+          phoneStr = phoneStr.slice(0, -2);
+        }
+
+        // Skip if phone number already exists or is empty
+        if (!phoneStr || currentWorkers.some(w => w.phone === phoneStr)) {
           continue;
         }
         
+        const rawArea = getVal(row, 'area');
+        const areaStr = rawArea !== undefined && rawArea !== null ? String(rawArea).trim() : null;
+
+        const rawPincode = getVal(row, 'pincode');
+        const pincodeStr = rawPincode !== undefined && rawPincode !== null ? String(rawPincode).trim().replace('.0', '') : null;
+
         let areaId = null;
-        if (row.Area && row.Area !== 'Address not specified') {
-          const existingArea = currentAreas.find(a => a.name.toLowerCase() === row.Area.toLowerCase());
+        if (areaStr && areaStr !== 'Address not specified') {
+          const existingArea = currentAreas.find(a => a.name.toLowerCase() === areaStr.toLowerCase());
           if (existingArea) {
             areaId = existingArea.id;
           } else {
             // Create area
             const { data: newArea } = await supabase.from('areas').insert({
-              name: row.Area,
-              pincode: row.Pincode || null,
+              name: areaStr,
+              pincode: pincodeStr || null,
               zone: null,
             }).select().single();
             if (newArea) {
@@ -137,26 +160,65 @@ export const Workers: React.FC = () => {
           }
         }
 
+        const rawInternalId = getVal(row, 'internalid');
+        const internalIdStr = rawInternalId !== undefined && rawInternalId !== null ? String(rawInternalId).trim() : null;
+
         const nextIdNum = currentWorkers.length + insertPayloads.length + 1;
-        const internalId = row.Internal_ID || `CRW-2026-${String(nextIdNum).padStart(4, '0')}`;
+        const internalId = internalIdStr || `CRW-2026-${String(nextIdNum).padStart(4, '0')}`;
+
+        const rawName = getVal(row, 'name');
+        const nameStr = rawName !== undefined && rawName !== null ? String(rawName).trim() : null;
+
+        const rawGender = getVal(row, 'gender');
+        const genderStr = rawGender !== undefined && rawGender !== null ? String(rawGender).trim().toLowerCase() : 'male';
+
+        const rawAge = getVal(row, 'age');
+        const ageNum = rawAge !== undefined && rawAge !== null ? parseInt(String(rawAge).replace('.0', ''), 10) : null;
+
+        const rawStatus = getVal(row, 'status');
+        const statusStr = rawStatus !== undefined && rawStatus !== null ? String(rawStatus).trim().toLowerCase() : 'draft';
+
+        const rawStage = getVal(row, 'stage');
+        const stageStr = rawStage !== undefined && rawStage !== null ? String(rawStage).trim().toLowerCase() : 'new';
+
+        const rawSkill = getVal(row, 'skill');
+        const skillStr = rawSkill !== undefined && rawSkill !== null ? String(rawSkill).trim() : null;
+
+        const rawExp = getVal(row, 'experienceyears');
+        const expNum = rawExp !== undefined && rawExp !== null ? parseInt(String(rawExp).replace('.0', ''), 10) : null;
+
+        const rawSal = getVal(row, 'expectedsalary');
+        const salNum = rawSal !== undefined && rawSal !== null ? parseInt(String(rawSal).replace('.0', ''), 10) : null;
+
+        const rawCity = getVal(row, 'city');
+        const cityStr = rawCity !== undefined && rawCity !== null ? String(rawCity).trim() : 'Trichy';
+
+        const rawAvail = getVal(row, 'availability');
+        const availStr = rawAvail !== undefined && rawAvail !== null ? String(rawAvail).trim().toLowerCase() : 'immediate';
+
+        const rawShift = getVal(row, 'shiftpreference');
+        const shiftStr = rawShift !== undefined && rawShift !== null ? String(rawShift).trim().toLowerCase() : 'any';
+
+        const rawNotes = getVal(row, 'notes');
+        const notesStr = rawNotes !== undefined && rawNotes !== null ? String(rawNotes).trim() : 'Imported via Excel';
 
         insertPayloads.push({
           internal_id: internalId,
-          full_name: row.Name || null,
-          phone: row.Phone || null,
-          gender: row.Gender?.toLowerCase() || 'male',
-          age: row.Age ? parseInt(row.Age, 10) : null,
-          worker_status: row.Status?.toLowerCase() || 'draft',
-          recruitment_stage: row.Stage?.toLowerCase() || 'new',
-          skill_category: row.Skill || null,
-          experience_years: row.Experience_Years ? parseInt(row.Experience_Years, 10) : null,
-          salary_expected: row.Expected_Salary ? parseInt(row.Expected_Salary, 10) : null,
+          full_name: nameStr,
+          phone: phoneStr,
+          gender: genderStr === 'male' || genderStr === 'female' ? genderStr : 'male',
+          age: isNaN(Number(ageNum)) ? null : ageNum,
+          worker_status: statusStr,
+          recruitment_stage: stageStr,
+          skill_category: skillStr,
+          experience_years: isNaN(Number(expNum)) ? null : expNum,
+          salary_expected: isNaN(Number(salNum)) ? null : salNum,
           area_id: areaId,
-          pincode: row.Pincode || null,
-          city: row.City || 'Trichy',
-          availability: row.Availability?.toLowerCase() || 'immediate',
-          shift_preference: row.Shift_Preference?.toLowerCase() || 'any',
-          notes: row.Notes || 'Imported via Excel',
+          pincode: pincodeStr || null,
+          city: cityStr,
+          availability: availStr,
+          shift_preference: shiftStr,
+          notes: notesStr,
           assigned_recruiter_id: useHRMSStore.getState().currentUser?.id ?? null,
           branch_id: useHRMSStore.getState().currentUser?.branch_id ?? null,
           organization_id: useHRMSStore.getState().currentUser?.organization_id ?? null,
