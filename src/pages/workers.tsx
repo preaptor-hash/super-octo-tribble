@@ -11,6 +11,7 @@ import {
   Download
 } from 'lucide-react';
 import Papa from 'papaparse';
+import { supabase } from '../lib/supabase';
 import { useHRMSStore } from '../db/store';
 import { WorkerCard } from '../components/worker-card';
 import { MapView } from '../components/map-view';
@@ -109,7 +110,7 @@ export const Workers: React.FC = () => {
       skipEmptyLines: true,
       complete: async (results) => {
         try {
-          const { supabase, loadAll } = useHRMSStore.getState();
+          const { loadAll } = useHRMSStore.getState();
           const currentAreas = useHRMSStore.getState().areas;
           const currentWorkers = useHRMSStore.getState().workers;
           
