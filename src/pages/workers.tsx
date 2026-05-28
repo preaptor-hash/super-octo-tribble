@@ -6,8 +6,11 @@ import {
   Map,
   List,
   Compass,
-  AlertCircle
+  AlertCircle,
+  Upload,
+  Download
 } from 'lucide-react';
+import Papa from 'papaparse';
 import { useHRMSStore } from '../db/store';
 import { WorkerCard } from '../components/worker-card';
 import { MapView } from '../components/map-view';
@@ -15,7 +18,9 @@ import type { WorkerStatus, RecruitmentStage } from '../types';
 
 export const Workers: React.FC = () => {
   const navigate = useNavigate();
-  const { areas, searchWorkers, addArea } = useHRMSStore();
+  const { areas, searchWorkers, addArea, workers, fastAddWorker } = useHRMSStore();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddAreaInline, setShowAddAreaInline] = useState(false);
@@ -60,6 +65,82 @@ export const Workers: React.FC = () => {
     }
   };
 
+  const handleExportCSV = () => {
+    const exportData = filteredWorkers.map(w => {
+      const area = areas.find(a => a.id === w.area_id);
+      return {
+        Internal_ID: w.internal_id || '',
+        Name: w.full_name || '',
+        Phone: w.phone || '',
+        Gender: w.gender || '',
+        Age: w.age || '',
+        Status: w.worker_status || '',
+        Stage: w.recruitment_stage || '',
+        Skill: w.skill_category || '',
+        Experience_Years: w.experience_years || '',
+        Expected_Salary: w.salary_expected || '',
+        Area: area ? area.name : 'Address not specified',
+        Pincode: w.pincode || '',
+        City: w.city || '',
+        Availability: w.availability || '',
+        Shift_Preference: w.shift_preference || '',
+        Notes: w.notes || ''
+      };
+    });
+    
+    const csv = Papa.unparse(exportData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', `workers_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsImporting(true);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          for (const row of results.data as any[]) {
+            if (row.Phone && workers.some(w => w.phone === row.Phone)) {
+              continue;
+            }
+            
+            let areaId = null;
+            if (row.Area && row.Area !== 'Address not specified') {
+              const existingArea = areas.find(a => a.name.toLowerCase() === row.Area.toLowerCase());
+              if (existingArea) {
+                areaId = existingArea.id;
+              } else {
+                const newArea = await addArea({ name: row.Area, pincode: row.Pincode || null, zone: null, latitude: null, longitude: null });
+                if (newArea) areaId = newArea.id;
+              }
+            }
+
+            await fastAddWorker({
+              full_name: row.Name || null,
+              phone: row.Phone || null,
+              skill_category: row.Skill || null,
+              gender: row.Gender?.toLowerCase() || 'male',
+              area_id: areaId,
+            });
+          }
+        } finally {
+          setIsImporting(false);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      }
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50/50 pb-28 pt-6 px-4 md:px-8 font-sans">
       <div className="max-w-6xl mx-auto flex flex-col gap-5 mb-6">
@@ -96,6 +177,32 @@ export const Workers: React.FC = () => {
               Map View
             </button>
           </div>
+        </div>
+
+        {/* CSV Actions */}
+        <div className="flex gap-2 justify-end mb-2">
+          <input 
+            type="file" 
+            accept=".csv" 
+            ref={fileInputRef} 
+            onChange={handleImportCSV} 
+            className="hidden" 
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isImporting}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
+          >
+            <Upload size={14} />
+            {isImporting ? 'Importing...' : 'Import CSV'}
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
+          >
+            <Download size={14} />
+            Export CSV
+          </button>
         </div>
 
         {/* Global Search and Filter Activator */}

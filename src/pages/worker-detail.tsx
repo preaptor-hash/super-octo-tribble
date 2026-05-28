@@ -270,7 +270,7 @@ export const WorkerDetail: React.FC = () => {
           </div>
 
           {/* Action Row */}
-          <div className="flex justify-between items-center border-t border-slate-100/70 mt-5 pt-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-t border-slate-100/70 mt-5 pt-4">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
               Assigned Recruiter: <span className="text-slate-700 font-extrabold">Karthik Raja</span>
             </span>

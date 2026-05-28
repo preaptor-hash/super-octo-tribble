@@ -144,6 +144,7 @@ const MainLayoutInner = ({ children }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [skill, setSkill] = useState('helper');
+  const [customSkill, setCustomSkill] = useState('');
   const [areaId, setAreaId] = useState('not_specified');
   const [gender, setGender] = useState('male');
 
@@ -158,13 +159,13 @@ const MainLayoutInner = ({ children }) => {
     const newWorker = await fastAddWorker({
       full_name: name,
       phone,
-      skill_category: skill,
+      skill_category: skill === 'other' ? customSkill.trim() : skill,
       area_id: areaId === 'not_specified' ? null : areaId,
       gender,
     });
     setIsSaving(false);
     if (!newWorker) return;
-    setName(''); setPhone(''); setSkill('helper'); setAreaId('not_specified'); setGender('male');
+    setName(''); setPhone(''); setSkill('helper'); setCustomSkill(''); setAreaId('not_specified'); setGender('male');
     setShowGlobalAdd(false);
     navigate(`/workers/${newWorker.id}`);
   };
@@ -326,12 +327,20 @@ const MainLayoutInner = ({ children }) => {
                     </button>
                   </div>
                 ) : (
-                  <select value={areaId} onChange={(e) => setAreaId(e.target.value)}
+                  <select value={areaId} onChange={(e) => {
+                      if (e.target.value === 'other') {
+                        setShowAddAreaInline(true);
+                        setAreaId('not_specified');
+                      } else {
+                        setAreaId(e.target.value);
+                      }
+                    }}
                     className="w-full h-11 border border-slate-200 rounded-xl px-3 text-sm focus:border-primary focus:outline-none bg-white font-medium text-slate-700">
                     <option value="not_specified">⚠️ Address not specified</option>
                     {areas.map(a => (
                       <option key={a.id} value={a.id}>📍 {a.name} ({a.pincode})</option>
                     ))}
+                    <option value="other">＋ Other (Add New Area)</option>
                   </select>
                 )}
               </div>
@@ -346,7 +355,13 @@ const MainLayoutInner = ({ children }) => {
                   <option value="delivery executive">Delivery Executive</option>
                   <option value="security guard">Security Guard</option>
                   <option value="plumber">Plumber</option>
+                  <option value="other">Other (Specify)</option>
                 </select>
+                {skill === 'other' && (
+                  <input type="text" value={customSkill} onChange={(e) => setCustomSkill(e.target.value)}
+                    placeholder="Enter custom skill..."
+                    className="w-full h-11 border border-slate-200 rounded-xl px-3 text-sm focus:border-primary focus:outline-none mt-2" />
+                )}
               </div>
 
               <div className="space-y-1.5">

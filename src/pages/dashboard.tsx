@@ -42,6 +42,7 @@ export const Dashboard: React.FC = () => {
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newSkill, setNewSkill] = useState('helper'); // default skill
+  const [newCustomSkill, setNewCustomSkill] = useState('');
   const [newAreaId, setNewAreaId] = useState('not_specified'); // "Address not specified" by default!
   const [newGender, setNewGender] = useState('male');
 
@@ -57,7 +58,7 @@ export const Dashboard: React.FC = () => {
     const newWorker = await fastAddWorker({
       full_name: newName,
       phone: newPhone,
-      skill_category: newSkill,
+      skill_category: newSkill === 'other' ? newCustomSkill.trim() : newSkill,
       area_id: newAreaId === 'not_specified' ? null : newAreaId,
       gender: newGender,
     });
@@ -66,6 +67,7 @@ export const Dashboard: React.FC = () => {
     setNewName('');
     setNewPhone('');
     setNewSkill('helper');
+    setNewCustomSkill('');
     setNewAreaId('not_specified');
     setNewGender('male');
     setShowAddModal(false);
@@ -514,7 +516,13 @@ export const Dashboard: React.FC = () => {
                   <option value="delivery executive">Delivery Executive</option>
                   <option value="security guard">Security Guard</option>
                   <option value="plumber">Plumber</option>
+                  <option value="other">Other (Specify)</option>
                 </select>
+                {newSkill === 'other' && (
+                  <input type="text" value={newCustomSkill} onChange={(e) => setNewCustomSkill(e.target.value)}
+                    placeholder="Enter custom skill..."
+                    className="w-full h-11 border border-slate-200 rounded-xl px-3 text-sm focus:border-primary focus:outline-none mt-2" />
+                )}
               </div>
 
               {/* Gender */}
