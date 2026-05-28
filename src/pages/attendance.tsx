@@ -14,7 +14,7 @@ export const Attendance: React.FC = () => {
   
   const [selectedWorkerId, setSelectedWorkerId] = useState('');
   const [attType, setAttType] = useState<AttendanceType>('present');
-  const [selfieCaptured, setSelfieCaptured] = useState(false);
+  const [selfieCaptured, setSelfieCaptured] = useState<string | null>(null);
   const [attNotes, setAttNotes] = useState('');
   const [isLocating, setIsLocating] = useState(false);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -34,17 +34,26 @@ export const Attendance: React.FC = () => {
           setIsLocating(false);
         },
         (error) => {
-          console.error("GPS failed, using fallback Trichy centroid coords", error);
-          // Fallback to KK Nagar centroid coords
-          setCoords({ latitude: 10.7905, longitude: 78.7118 });
+          console.error("GPS failed:", error);
+          alert("GPS Failed: Please ensure location permissions are granted.");
           setIsLocating(false);
         },
         { timeout: 5000 }
       );
     } else {
-      // Fallback coords
-      setCoords({ latitude: 10.7905, longitude: 78.7118 });
+      alert("Geolocation is not supported by your browser.");
       setIsLocating(false);
+    }
+  };
+
+  const handleSelfieCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelfieCaptured(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -60,7 +69,7 @@ export const Attendance: React.FC = () => {
       selectedWorkerId,
       attType,
       coords,
-      selfieCaptured ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100' : null,
+      selfieCaptured,
       attNotes || `Checked in via field recruiter app.`
     );
 
@@ -69,7 +78,7 @@ export const Attendance: React.FC = () => {
     // Reset Form
     setSelectedWorkerId('');
     setAttType('present');
-    setSelfieCaptured(false);
+    setSelfieCaptured(null);
     setAttNotes('');
     setCoords(null);
   };
@@ -156,35 +165,40 @@ export const Attendance: React.FC = () => {
                 {coords && (
                   <div className="text-[10px] text-slate-400 font-semibold pl-1">
                     Latitude: <span className="text-slate-600 font-bold">{coords.latitude.toFixed(6)}</span>, 
-                    Longitude: <span className="text-slate-600 font-bold">{coords.longitude.toFixed(6)}</span> (KK Nagar centroid fallback used on failure)
+                    Longitude: <span className="text-slate-600 font-bold">{coords.longitude.toFixed(6)}</span>
                   </div>
                 )}
               </div>
 
-              {/* simulated Camera Selfie */}
+              {/* Field Camera Selfie */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 block">Field Selfie Upload (Visual Stamp)</label>
-                <button
-                  type="button"
-                  onClick={() => setSelfieCaptured(!selfieCaptured)}
-                  className={`w-full h-24 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all ${
+                <div className="relative">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    capture="environment" 
+                    onChange={handleSelfieCapture}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <div className={`w-full h-24 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all ${
                     selfieCaptured
                       ? 'bg-emerald-50 border-emerald-300 text-emerald-600 shadow-inner'
                       : 'bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300'
-                  }`}
-                >
-                  {selfieCaptured ? (
-                    <>
-                      <CheckCircle2 size={24} className="text-emerald-500 animate-bounce" />
-                      <span className="text-xs font-bold mt-1">Selfie Stamp Attached</span>
-                    </>
-                  ) : (
-                    <>
-                      <Camera size={24} className="text-slate-400" />
-                      <span className="text-xs font-bold mt-1">Tap to capture mock field selfie</span>
-                    </>
-                  )}
-                </button>
+                  }`}>
+                    {selfieCaptured ? (
+                      <>
+                        <CheckCircle2 size={24} className="text-emerald-500 animate-bounce" />
+                        <span className="text-xs font-bold mt-1">Selfie Stamp Attached</span>
+                      </>
+                    ) : (
+                      <>
+                        <Camera size={24} className="text-slate-400" />
+                        <span className="text-xs font-bold mt-1">Tap to capture field selfie</span>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Notes */}

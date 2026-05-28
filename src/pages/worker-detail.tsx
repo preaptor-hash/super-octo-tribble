@@ -157,11 +157,6 @@ export const WorkerDetail: React.FC = () => {
       // Reset upload fields
       setFileDataUrl(null);
       setFileName('');
-    } else {
-      // Mock fallback so recruiter is never blocked!
-      const mockFileUrl = `/mock-uploads/${docType}_${worker.id}.pdf`;
-      uploadDocument(worker.id, docType, mockFileUrl);
-      alert(`Mock file copy of ${docType.toUpperCase()} successfully registered!`);
     }
   };
 
@@ -801,11 +796,11 @@ export const WorkerDetail: React.FC = () => {
                   <div className="flex justify-end pt-2 border-t border-slate-100">
                     <button
                       type="submit"
-                      disabled={!!errorMsg}
-                      className="w-full md:w-auto h-11 px-6 bg-gradient-to-tr from-primary to-primary-light text-white font-extrabold rounded-xl text-sm flex items-center justify-center gap-1.5 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md cursor-pointer border border-white/10"
+                      disabled={!fileDataUrl || !!errorMsg}
+                      className="w-full md:w-auto h-11 px-6 bg-gradient-to-tr from-primary to-primary-light text-white font-extrabold rounded-xl text-sm flex items-center justify-center gap-1.5 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md cursor-pointer border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Upload size={14} />
-                      {fileDataUrl ? 'Upload Selected File' : 'Register Mock Copy'}
+                      Upload Selected File
                     </button>
                   </div>
                 </form>
@@ -859,12 +854,6 @@ export const WorkerDetail: React.FC = () => {
                             <a 
                               href={doc.file_url} 
                               download={`${doc.document_type}_${worker.id}`}
-                              onClick={(e) => {
-                                if (doc.file_url.startsWith('/mock-')) {
-                                  e.preventDefault();
-                                  alert(`Downloading mock copy: ${doc.file_url}`);
-                                }
-                              }}
                               className="text-[10px] font-bold text-slate-400 hover:text-slate-600 hover:underline"
                             >
                               Download copy

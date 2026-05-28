@@ -549,7 +549,7 @@ export const Settings: React.FC = () => {
                         Hard Database Reset (Restore Default Seed Data)
                       </h3>
                       <span className="text-[10px] text-rose-700/80 font-semibold block">
-                        Warning: This will permanently wipe all current local storage updates, added centroids, mock workers, and attendance cards, restoring the database to default values.
+                        Warning: This will permanently wipe all current local storage updates, added centroids, workers, and attendance cards, restoring the database to default values.
                       </span>
                     </div>
                     <button
