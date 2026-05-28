@@ -10,7 +10,7 @@ import {
   Upload,
   Download
 } from 'lucide-react';
-import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { supabase } from '../lib/supabase';
 import { useHRMSStore } from '../db/store';
 import { WorkerCard } from '../components/worker-card';
@@ -66,7 +66,7 @@ export const Workers: React.FC = () => {
     }
   };
 
-  const handleExportCSV = () => {
+  const handleExportExcel = () => {
     const exportData = filteredWorkers.map(w => {
       const area = areas.find(a => a.id === w.area_id);
       return {
@@ -89,101 +89,94 @@ export const Workers: React.FC = () => {
       };
     });
     
-    const csv = Papa.unparse(exportData);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    link.setAttribute('download', `workers_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Workers");
+    XLSX.writeFile(workbook, `workers_export_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
     setIsImporting(true);
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        try {
-          const { loadAll } = useHRMSStore.getState();
-          const currentAreas = useHRMSStore.getState().areas;
-          const currentWorkers = useHRMSStore.getState().workers;
-          
-          const insertPayloads = [];
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(worksheet);
 
-          for (const row of results.data as any[]) {
-            // Skip if phone number already exists
-            if (row.Phone && currentWorkers.some(w => w.phone === row.Phone)) {
-              continue;
-            }
-            
-            let areaId = null;
-            if (row.Area && row.Area !== 'Address not specified') {
-              const existingArea = currentAreas.find(a => a.name.toLowerCase() === row.Area.toLowerCase());
-              if (existingArea) {
-                areaId = existingArea.id;
-              } else {
-                // If the area doesn't exist, create it on the fly
-                const { data: newArea } = await supabase.from('areas').insert({
-                  name: row.Area,
-                  pincode: row.Pincode || null,
-                  zone: null,
-                }).select().single();
-                if (newArea) {
-                  areaId = newArea.id;
-                  currentAreas.push(newArea);
-                }
-              }
-            }
+      const { loadAll } = useHRMSStore.getState();
+      const currentAreas = [...useHRMSStore.getState().areas];
+      const currentWorkers = useHRMSStore.getState().workers;
+      
+      const insertPayloads = [];
 
-            const nextIdNum = currentWorkers.length + insertPayloads.length + 1;
-            const internalId = row.Internal_ID || `CRW-2026-${String(nextIdNum).padStart(4, '0')}`;
-
-            insertPayloads.push({
-              internal_id: internalId,
-              full_name: row.Name || null,
-              phone: row.Phone || null,
-              gender: row.Gender?.toLowerCase() || 'male',
-              age: row.Age ? parseInt(row.Age, 10) : null,
-              worker_status: row.Status?.toLowerCase() || 'draft',
-              recruitment_stage: row.Stage?.toLowerCase() || 'new',
-              skill_category: row.Skill || null,
-              experience_years: row.Experience_Years ? parseInt(row.Experience_Years, 10) : null,
-              salary_expected: row.Expected_Salary ? parseInt(row.Expected_Salary, 10) : null,
-              area_id: areaId,
-              pincode: row.Pincode || null,
-              city: row.City || 'Trichy',
-              availability: row.Availability?.toLowerCase() || 'immediate',
-              shift_preference: row.Shift_Preference?.toLowerCase() || 'any',
-              notes: row.Notes || 'Imported via CSV',
-              assigned_recruiter_id: useHRMSStore.getState().currentUser?.id ?? null,
-              branch_id: useHRMSStore.getState().currentUser?.branch_id ?? null,
-              organization_id: useHRMSStore.getState().currentUser?.organization_id ?? null,
-            });
-          }
-
-          if (insertPayloads.length > 0) {
-            console.log('Inserting workers from CSV:', insertPayloads);
-            const { error } = await supabase.from('workers').insert(insertPayloads);
-            if (error) throw error;
-            // Reload store to fetch new workers
-            await loadAll();
-          }
-
-        } catch (error) {
-          console.error("CSV Import Error:", error);
-          alert("Failed to import CSV to database. Check console for details.");
-        } finally {
-          setIsImporting(false);
-          if (fileInputRef.current) fileInputRef.current.value = '';
+      for (const row of rows as any[]) {
+        // Skip if phone number already exists
+        if (row.Phone && currentWorkers.some(w => w.phone === row.Phone)) {
+          continue;
         }
+        
+        let areaId = null;
+        if (row.Area && row.Area !== 'Address not specified') {
+          const existingArea = currentAreas.find(a => a.name.toLowerCase() === row.Area.toLowerCase());
+          if (existingArea) {
+            areaId = existingArea.id;
+          } else {
+            // Create area
+            const { data: newArea } = await supabase.from('areas').insert({
+              name: row.Area,
+              pincode: row.Pincode || null,
+              zone: null,
+            }).select().single();
+            if (newArea) {
+              areaId = newArea.id;
+              currentAreas.push(newArea);
+            }
+          }
+        }
+
+        const nextIdNum = currentWorkers.length + insertPayloads.length + 1;
+        const internalId = row.Internal_ID || `CRW-2026-${String(nextIdNum).padStart(4, '0')}`;
+
+        insertPayloads.push({
+          internal_id: internalId,
+          full_name: row.Name || null,
+          phone: row.Phone || null,
+          gender: row.Gender?.toLowerCase() || 'male',
+          age: row.Age ? parseInt(row.Age, 10) : null,
+          worker_status: row.Status?.toLowerCase() || 'draft',
+          recruitment_stage: row.Stage?.toLowerCase() || 'new',
+          skill_category: row.Skill || null,
+          experience_years: row.Experience_Years ? parseInt(row.Experience_Years, 10) : null,
+          salary_expected: row.Expected_Salary ? parseInt(row.Expected_Salary, 10) : null,
+          area_id: areaId,
+          pincode: row.Pincode || null,
+          city: row.City || 'Trichy',
+          availability: row.Availability?.toLowerCase() || 'immediate',
+          shift_preference: row.Shift_Preference?.toLowerCase() || 'any',
+          notes: row.Notes || 'Imported via Excel',
+          assigned_recruiter_id: useHRMSStore.getState().currentUser?.id ?? null,
+          branch_id: useHRMSStore.getState().currentUser?.branch_id ?? null,
+          organization_id: useHRMSStore.getState().currentUser?.organization_id ?? null,
+        });
       }
-    });
+
+      if (insertPayloads.length > 0) {
+        console.log('Inserting workers from Excel:', insertPayloads);
+        const { error } = await supabase.from('workers').insert(insertPayloads);
+        if (error) throw error;
+        await loadAll();
+      }
+
+    } catch (error) {
+      console.error("Excel Import Error:", error);
+      alert("Failed to import Excel to database. Check console for details.");
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -199,26 +192,26 @@ export const Workers: React.FC = () => {
           
           {/* View Toggle & CSV Actions */}
           <div className="flex items-center gap-3">
-            {/* CSV Actions */}
+            {/* Excel Actions */}
             <div className="flex items-center gap-2">
               <input 
                 type="file" 
-                accept=".csv" 
+                accept=".xlsx,.xls,.csv" 
                 ref={fileInputRef} 
-                onChange={handleImportCSV} 
+                onChange={handleImportExcel} 
                 className="hidden" 
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isImporting}
-                title="Import CSV"
+                title="Import Excel"
                 className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-primary transition-all shadow-sm"
               >
                 <Upload size={16} className={isImporting ? "animate-bounce" : ""} />
               </button>
               <button
-                onClick={handleExportCSV}
-                title="Export CSV"
+                onClick={handleExportExcel}
+                title="Export Excel"
                 className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-primary transition-all shadow-sm"
               >
                 <Download size={16} />

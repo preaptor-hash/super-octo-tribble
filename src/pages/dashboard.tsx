@@ -35,7 +35,7 @@ import {
   PieChart,
   Pie
 } from 'recharts';
-import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { useHRMSStore } from '../db/store';
 
 export const Dashboard: React.FC = () => {
@@ -104,7 +104,7 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const handleExportCSV = () => {
+  const handleExportExcel = () => {
     const exportData = workers.map(w => {
       const area = areas.find(a => a.id === w.area_id);
       return {
@@ -127,15 +127,10 @@ export const Dashboard: React.FC = () => {
       };
     });
     
-    const csv = Papa.unparse(exportData);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    link.setAttribute('download', `all_workers_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "All Workers");
+    XLSX.writeFile(workbook, `all_workers_export_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   // Operational metrics calculations
@@ -258,11 +253,11 @@ export const Dashboard: React.FC = () => {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={handleExportCSV}
+                onClick={handleExportExcel}
                 className="text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-all duration-200 flex items-center gap-1.5"
               >
                 <FileText size={14} />
-                Download CSV
+                Download Excel
               </button>
               <Link 
                 to="/workers" 
