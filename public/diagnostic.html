@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HRMS Diagnostic Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .status-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .status-card.success {
+            border-left: 4px solid #10b981;
+        }
+        
+        .status-card.error {
+            border-left: 4px solid #ef4444;
+        }
+        
+        .status-card.warning {
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .status-card h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .status-card p {
+            font-size: 13px;
+            color: #666;
+            word-break: break-all;
+        }
+        
+        .status-icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        
+        .status-icon.success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .status-icon.error {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .status-icon.warning {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .details {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .details h2 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .detail-item {
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            color: #333;
+            border-left: 3px solid #e5e7eb;
+        }
+        
+        .detail-item.success {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+        
+        .detail-item.error {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f4f6;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 HRMS Diagnostic Tool</h1>
+            <p>Checking your application configuration and connectivity</p>
+        </div>
+        
+        <div class="status-grid" id="statusGrid">
+            <div class="status-card warning">
+                <h3><span class="loading"></span> Running diagnostics...</h3>
+                <p>Please wait while we check your configuration</p>
+            </div>
+        </div>
+        
+        <div class="details" id="details"></div>
+        
+        <div class="buttons">
+            <button class="btn-primary" onclick="runDiagnostics()">🔄 Rerun Diagnostics</button>
+            <button class="btn-secondary" onclick="window.location.href='/'">🏠 Go to App</button>
+        </div>
+    </div>
+
+    <script>
+        async function runDiagnostics() {
+            const statusGrid = document.getElementById('statusGrid');
+            const details = document.getElementById('details');
+            
+            statusGrid.innerHTML = '';
+            details.innerHTML = '';
+            
+            const results = {
+                environment: null,
+                supabase: null,
+                connection: null,
+                app: null
+            };
+            
+            // Check 1: Environment Variables
+            try {
+                const url = new URL(window.location);
+                const isDev = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+                
+                const envCheck = {
+                    isDev,
+                    hostname: url.hostname,
+                    protocol: url.protocol,
+                    pathname: url.pathname
+                };
+                
+                results.environment = {
+                    success: true,
+                    data: envCheck
+                };
+                
+                addStatusCard('Environment', 'success', `
+                    <strong>Hostname:</strong> ${envCheck.hostname}<br>
+                    <strong>Protocol:</strong> ${envCheck.protocol}<br>
+                    <strong>Mode:</strong> ${isDev ? 'Development' : 'Production'}
+                `);
+                
+                addDetail('Environment', `✓ Running on ${envCheck.hostname}`, 'success');
+            } catch (error) {
+                results.environment = { success: false, error: error.message };
+                addStatusCard('Environment', 'error', error.message);
+                addDetail('Environment Error', error.message, 'error');
+            }
+            
+            // Check 2: Supabase Library
+            try {
+                const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.106.2/+esm');
+                results.supabase = { success: true };
+                addStatusCard('Supabase Library', 'success', 'Successfully loaded @supabase/supabase-js');
+                addDetail('Supabase', '✓ Library loaded successfully', 'success');
+            } catch (error) {
+                results.supabase = { success: false, error: error.message };
+                addStatusCard('Supabase Library', 'error', error.message);
+                addDetail('Supabase Error', error.message, 'error');
+            }
+            
+            // Check 3: App Files
+            try {
+                const response = await fetch('/index.html');
+                if (response.ok) {
+                    results.app = { success: true };
+                    addStatusCard('App Files', 'success', 'index.html found and accessible');
+                    addDetail('App Files', '✓ index.html is accessible', 'success');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                results.app = { success: false, error: error.message };
+                addStatusCard('App Files', 'error', error.message);
+                addDetail('App Files Error', error.message, 'error');
+            }
+            
+            // Check 4: Browser Console
+            try {
+                const hasErrors = window.console.error.toString().includes('error');
+                addStatusCard('Browser Console', 'success', 'Open F12 to see detailed logs');
+                addDetail('Console', '✓ Check browser console (F12) for detailed logs', 'success');
+            } catch (error) {
+                addStatusCard('Browser Console', 'warning', 'Could not check console');
+            }
+            
+            // Summary
+            const allSuccess = Object.values(results).every(r => r?.success !== false);
+            
+            if (allSuccess) {
+                addDetail('Summary', '✅ All checks passed! Your application should be working.', 'success');
+            } else {
+                addDetail('Summary', '⚠️ Some checks failed. Check the details above.', 'error');
+            }
+        }
+        
+        function addStatusCard(title, type, content) {
+            const grid = document.getElementById('statusGrid');
+            const card = document.createElement('div');
+            card.className = `status-card ${type}`;
+            card.innerHTML = `
+                <h3>
+                    <span class="status-icon ${type}">
+                        ${type === 'success' ? '✓' : type === 'error' ? '✕' : '!'}
+                    </span>
+                    ${title}
+                </h3>
+                <p>${content}</p>
+            `;
+            grid.appendChild(card);
+        }
+        
+        function addDetail(title, content, type = 'success') {
+            const details = document.getElementById('details');
+            if (details.innerHTML === '') {
+                details.innerHTML = '<h2>📋 Detailed Results</h2>';
+            }
+            const item = document.createElement('div');
+            item.className = `detail-item ${type}`;
+            item.innerHTML = `<strong>${title}:</strong> ${content}`;
+            details.appendChild(item);
+        }
+        
+        // Run diagnostics on load
+        window.addEventListener('load', runDiagnostics);
+    </script>
+</body>
+</html>

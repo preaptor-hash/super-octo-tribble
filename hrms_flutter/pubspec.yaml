@@ -1,0 +1,56 @@
+name: hrms_flutter
+description: Vyesshrms - HRMS Staffing Platform for Trichy field workers
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.5.1
+
+  # Navigation
+  go_router: ^13.2.0
+
+  # Local storage / persistence
+  shared_preferences: ^2.2.3
+
+  # UUID generation
+  uuid: ^4.4.0
+
+  # Map
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.1
+
+  # Charts
+  fl_chart: ^0.68.0
+
+  # GPS / Location
+  geolocator: ^11.0.0
+  permission_handler: ^11.3.1
+
+  # Image picker (selfie / document upload)
+  image_picker: ^1.1.2
+
+  # Icons
+  cupertino_icons: ^1.0.6
+
+  # Date formatting
+  intl: ^0.19.0
+
+  # HTTP
+  http: ^1.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
