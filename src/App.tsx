@@ -33,7 +33,7 @@ import { BottomNav } from './components/bottom-nav';
 
 // ─── Auth guard + data bootstrap ─────────────────────────────
 const MainLayout = ({ children }) => {
-  const { currentUser, loadAll, logout } = useHRMSStore();
+  const { currentUser, loadAll } = useHRMSStore();
   const [appReady, setAppReady] = useState(false);
 
   // Listen to ALL auth state changes (refresh, login, logout, token renewal)

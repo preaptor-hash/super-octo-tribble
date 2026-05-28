@@ -403,8 +403,8 @@ export const useHRMSStore = create<HRMSState>((set, get) => ({
       set((s) => ({ attendance: [{...payload, id: dummyId, created_at: payload.check_in_time} as unknown as Attendance, ...s.attendance] }));
       
       // Setup one-time online sync listener if not already there
-      if (!(window as any).vyessOfflineListenerAdded) {
-        (window as any).vyessOfflineListenerAdded = true;
+      if (!(window as unknown as Record<string, unknown>).vyessOfflineListenerAdded) {
+        (window as unknown as Record<string, unknown>).vyessOfflineListenerAdded = true;
         window.addEventListener('online', async () => {
           console.log('📶 Back online: Syncing attendance queue...');
           const queue = JSON.parse(localStorage.getItem('vyess_offline_attendance') || '[]');
@@ -708,7 +708,7 @@ export const useHRMSStore = create<HRMSState>((set, get) => ({
 
     console.log('🔌 Initializing Supabase Realtime Sync...');
     
-    const channel = supabase.channel('vyess-hrms-live')
+    supabase.channel('vyess-hrms-live')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'workers' },

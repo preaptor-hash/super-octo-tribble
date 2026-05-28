@@ -19,7 +19,7 @@ import type { WorkerStatus, RecruitmentStage } from '../types';
 
 export const Workers: React.FC = () => {
   const navigate = useNavigate();
-  const { areas, searchWorkers, addArea, workers, fastAddWorker } = useHRMSStore();
+  const { areas, searchWorkers, addArea } = useHRMSStore();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
 
@@ -112,7 +112,7 @@ export const Workers: React.FC = () => {
       
       const insertPayloads = [];
 
-      for (const row of rows as any[]) {
+      for (const row of rows as Record<string, string | number | null | undefined>[]) {
         // Skip if phone number already exists
         if (row.Phone && currentWorkers.some(w => w.phone === row.Phone)) {
           continue;
