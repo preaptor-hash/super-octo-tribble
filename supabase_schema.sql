@@ -1,10 +1,11 @@
 -- Vyesshrms: Complete Supabase PostgreSQL Schema Migration
 -- Designed for real-world manpower and field staffing operations in Trichy.
+-- Last updated: Fixed RLS recursive loop, location column type, WITH CHECK clauses.
 
 -- 1. Enable Required Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
-CREATE EXTENSION IF NOT EXISTS "postgis";
+-- NOTE: postgis not required; location stored as jsonb {latitude, longitude}
 
 -- 2. Create Multi-Tenant Organizations
 CREATE TABLE IF NOT EXISTS public.organizations (
@@ -42,7 +43,6 @@ CREATE TABLE IF NOT EXISTS public.areas (
     latitude numeric,
     longitude numeric,
     zone text,
-    polygon geography(POLYGON, 4326),
     created_at timestamp with time zone DEFAULT now()
 );
 
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS public.workers (
     city text DEFAULT 'Trichy',
     area_id uuid REFERENCES public.areas(id) ON DELETE SET NULL,
     pincode text,
-    location geography(POINT, 4326), -- PostGIS Point for proximity sliders
+    location jsonb,  -- stored as {latitude: ..., longitude: ...}
     availability text,
     shift_preference text,
     aadhaar_number text,
@@ -77,15 +77,15 @@ CREATE TABLE IF NOT EXISTS public.workers (
     updated_at timestamp with time zone DEFAULT now()
 );
 
--- 7. Create Shift Attendance Log (Selfies & Coordinates Hidden on Front-End)
+-- 7. Create Shift Attendance Log
 CREATE TABLE IF NOT EXISTS public.attendance (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     worker_id uuid NOT NULL REFERENCES public.workers(id) ON DELETE CASCADE,
     check_in_time timestamp with time zone,
     check_out_time timestamp with time zone,
     type text NOT NULL CHECK (type IN ('present', 'absent', 'leave', 'half_day', 'late')),
-    gps_location geography(POINT, 4326), -- PostGIS coordinates stamp
-    selfie_url text, -- Supabase Storage selfie url
+    gps_location jsonb,  -- stored as {latitude: ..., longitude: ...}
+    selfie_url text,
     notes text,
     created_at timestamp with time zone DEFAULT now()
 );
@@ -122,35 +122,22 @@ CREATE TABLE IF NOT EXISTS public.deployments (
 );
 
 
--- INDEXES FOR MAXIMUM SEARCH & PROXIMITY PERFORMANCE
-
--- Trigram Indexes for pg_trgm similarity search (KK Nagar delivery, Mutha tailor)
+-- INDEXES FOR SEARCH PERFORMANCE
 CREATE INDEX IF NOT EXISTS idx_workers_full_name_trgm ON public.workers USING gin (full_name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_workers_skill_trgm ON public.workers USING gin (skill_category gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS idx_workers_notes_trgm ON public.workers USING gin (notes gin_trgm_ops);
-
--- Spatial GiST Indexes for Hyperlocal Proximity Queries (mocking ST_DWithin range calculations)
-CREATE INDEX IF NOT EXISTS idx_workers_location_gist ON public.workers USING gist (location);
-CREATE INDEX IF NOT EXISTS idx_areas_polygon_gist ON public.areas USING gist (polygon);
+CREATE INDEX IF NOT EXISTS idx_workers_location_gin ON public.workers USING gin (location);
 
 
--- SEED DATA PRE-POPULATION (TRICHY CENTROIDS)
-INSERT INTO public.organizations (id, name) VALUES ('org-1'::uuid, 'CrewOps Manpower & Staffing Solutions Pvt Ltd') ON CONFLICT DO NOTHING;
-
-INSERT INTO public.branches (id, organization_id, name, address) 
-VALUES ('branch-trichy'::uuid, 'org-1'::uuid, 'Trichy Main Office', '12B, Salai Road, Woraiyur, Trichy - 620003') ON CONFLICT DO NOTHING;
-
-INSERT INTO public.users (id, email, full_name, role, organization_id, branch_id) VALUES
-('user-rec-1'::uuid, 'karthik@crewops.in', 'Karthik Raja', 'recruiter', 'org-1'::uuid, 'branch-trichy'::uuid) ON CONFLICT DO NOTHING;
-
+-- SEED DATA (TRICHY CENTROIDS)
 INSERT INTO public.areas (id, name, pincode, latitude, longitude, zone) VALUES
-('area-kk-nagar'::uuid, 'KK Nagar', '620021', 10.7905, 78.7118, 'Ponmalai Zone'),
-('area-thillai-nagar'::uuid, 'Thillai Nagar', '620018', 10.8286, 78.6872, 'Abhishekapuram Zone'),
-('area-cantonment'::uuid, 'Cantonment', '620001', 10.8122, 78.6865, 'Abhishekapuram Zone'),
-('area-srirangam'::uuid, 'Srirangam', '620006', 10.8622, 78.6903, 'Srirangam Zone'),
-('area-kattur'::uuid, 'Kattur', '620019', 10.7937, 78.7495, 'Golden Rock Zone'),
-('area-lalgudi'::uuid, 'Lalgudi', '621601', 10.8667, 78.8167, 'Outskirts North'),
-('area-tiruverumbur'::uuid, 'Tiruverumbur', '620013', 10.7925, 78.7678, 'Ponmalai Zone')
+('area-kk-nagar'::uuid,     'KK Nagar',      '620021', 10.7905, 78.7118, 'Ponmalai Zone'),
+('area-thillai-nagar'::uuid,'Thillai Nagar', '620018', 10.8286, 78.6872, 'Abhishekapuram Zone'),
+('area-cantonment'::uuid,   'Cantonment',    '620001', 10.8122, 78.6865, 'Abhishekapuram Zone'),
+('area-srirangam'::uuid,    'Srirangam',     '620006', 10.8622, 78.6903, 'Srirangam Zone'),
+('area-kattur'::uuid,       'Kattur',        '620019', 10.7937, 78.7495, 'Golden Rock Zone'),
+('area-lalgudi'::uuid,      'Lalgudi',       '621601', 10.8667, 78.8167, 'Outskirts North'),
+('area-tiruverumbur'::uuid, 'Tiruverumbur',  '620013', 10.7925, 78.7678, 'Ponmalai Zone')
 ON CONFLICT DO NOTHING;
 
 
@@ -165,7 +152,22 @@ ALTER TABLE public.deployments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notes_timeline ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
 
--- Trigger function to automatically create/sync public user profiles on auth signup
+-- ============================================================
+-- SECURITY DEFINER HELPER (avoids recursive RLS on users table)
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.get_my_org_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT organization_id FROM public.users WHERE id = auth.uid() LIMIT 1;
+$$;
+
+-- ============================================================
+-- AUTH TRIGGER: Auto-sync auth.users -> public.users on signup
+-- ============================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
@@ -187,73 +189,80 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- Organizations RLS
-CREATE POLICY "Users can view and manage their organization" ON public.organizations
-    FOR ALL USING (
-        id IS NOT DISTINCT FROM (SELECT organization_id FROM public.users WHERE id = auth.uid())
-    );
+-- ============================================================
+-- RLS POLICIES (non-recursive, WITH CHECK on all writes)
+-- ============================================================
 
--- Branches RLS
-CREATE POLICY "Users can view and manage branches in their organization" ON public.branches
-    FOR ALL USING (
-        organization_id IS NOT DISTINCT FROM (SELECT organization_id FROM public.users WHERE id = auth.uid())
-    );
+-- AREAS: any authenticated user
+CREATE POLICY "areas_all" ON public.areas
+  FOR ALL TO authenticated
+  USING (true) WITH CHECK (true);
 
--- Users RLS
-CREATE POLICY "Users can manage their own profile or organization members" ON public.users
-    FOR ALL USING (
-        id = auth.uid()
-        OR organization_id IS NOT DISTINCT FROM (SELECT organization_id FROM public.users WHERE id = auth.uid())
-    );
+-- USERS: own row or same org (non-recursive via get_my_org_id)
+CREATE POLICY "users_select" ON public.users
+  FOR SELECT TO authenticated
+  USING (id = auth.uid() OR organization_id = public.get_my_org_id());
 
--- Areas RLS
-CREATE POLICY "Authenticated users can manage areas" ON public.areas
-    FOR ALL USING (
-        auth.role() = 'authenticated'
-    );
+CREATE POLICY "users_insert" ON public.users
+  FOR INSERT TO authenticated WITH CHECK (id = auth.uid());
 
--- Null-safe organization management RLS policies for Workers and core logs
-CREATE POLICY "Users can manage workers of same organization" ON public.workers
-    FOR ALL USING (
-        organization_id IS NOT DISTINCT FROM (SELECT organization_id FROM public.users WHERE id = auth.uid())
-    );
+CREATE POLICY "users_update" ON public.users
+  FOR UPDATE TO authenticated
+  USING (id = auth.uid()) WITH CHECK (id = auth.uid());
 
-CREATE POLICY "Users can manage attendance" ON public.attendance
-    FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.workers w
-            JOIN public.users u ON u.id = auth.uid()
-            WHERE w.id = attendance.worker_id 
-              AND w.organization_id IS NOT DISTINCT FROM u.organization_id
-        )
-    );
+CREATE POLICY "users_delete" ON public.users
+  FOR DELETE TO authenticated USING (id = auth.uid());
 
-CREATE POLICY "Users can manage deployments" ON public.deployments
-    FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.workers w
-            JOIN public.users u ON u.id = auth.uid()
-            WHERE w.id = deployments.worker_id 
-              AND w.organization_id IS NOT DISTINCT FROM u.organization_id
-        )
-    );
+-- WORKERS: same org, with full USING + WITH CHECK
+CREATE POLICY "workers_select" ON public.workers
+  FOR SELECT TO authenticated
+  USING (NOT (organization_id IS DISTINCT FROM public.get_my_org_id()));
 
-CREATE POLICY "Users can manage notes" ON public.notes_timeline
-    FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.workers w
-            JOIN public.users u ON u.id = auth.uid()
-            WHERE w.id = notes_timeline.worker_id 
-              AND w.organization_id IS NOT DISTINCT FROM u.organization_id
-        )
-    );
+CREATE POLICY "workers_insert" ON public.workers
+  FOR INSERT TO authenticated
+  WITH CHECK (NOT (organization_id IS DISTINCT FROM public.get_my_org_id()));
 
-CREATE POLICY "Users can manage documents" ON public.documents
-    FOR ALL USING (
-        EXISTS (
-            SELECT 1 FROM public.workers w
-            JOIN public.users u ON u.id = auth.uid()
-            WHERE w.id = documents.worker_id 
-              AND w.organization_id IS NOT DISTINCT FROM u.organization_id
-        )
-    );
+CREATE POLICY "workers_update" ON public.workers
+  FOR UPDATE TO authenticated
+  USING (NOT (organization_id IS DISTINCT FROM public.get_my_org_id()))
+  WITH CHECK (NOT (organization_id IS DISTINCT FROM public.get_my_org_id()));
+
+CREATE POLICY "workers_delete" ON public.workers
+  FOR DELETE TO authenticated
+  USING (NOT (organization_id IS DISTINCT FROM public.get_my_org_id()));
+
+-- NOTES_TIMELINE
+CREATE POLICY "notes_all" ON public.notes_timeline
+  FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.workers w WHERE w.id = notes_timeline.worker_id AND NOT (w.organization_id IS DISTINCT FROM public.get_my_org_id())))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.workers w WHERE w.id = notes_timeline.worker_id AND NOT (w.organization_id IS DISTINCT FROM public.get_my_org_id())));
+
+-- ATTENDANCE
+CREATE POLICY "attendance_all" ON public.attendance
+  FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.workers w WHERE w.id = attendance.worker_id AND NOT (w.organization_id IS DISTINCT FROM public.get_my_org_id())))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.workers w WHERE w.id = attendance.worker_id AND NOT (w.organization_id IS DISTINCT FROM public.get_my_org_id())));
+
+-- DEPLOYMENTS
+CREATE POLICY "deployments_all" ON public.deployments
+  FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.workers w WHERE w.id = deployments.worker_id AND NOT (w.organization_id IS DISTINCT FROM public.get_my_org_id())))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.workers w WHERE w.id = deployments.worker_id AND NOT (w.organization_id IS DISTINCT FROM public.get_my_org_id())));
+
+-- DOCUMENTS
+CREATE POLICY "documents_all" ON public.documents
+  FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.workers w WHERE w.id = documents.worker_id AND NOT (w.organization_id IS DISTINCT FROM public.get_my_org_id())))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.workers w WHERE w.id = documents.worker_id AND NOT (w.organization_id IS DISTINCT FROM public.get_my_org_id())));
+
+-- BRANCHES
+CREATE POLICY "branches_all" ON public.branches
+  FOR ALL TO authenticated
+  USING (NOT (organization_id IS DISTINCT FROM public.get_my_org_id()))
+  WITH CHECK (NOT (organization_id IS DISTINCT FROM public.get_my_org_id()));
+
+-- ORGANIZATIONS
+CREATE POLICY "organizations_all" ON public.organizations
+  FOR ALL TO authenticated
+  USING (NOT (id IS DISTINCT FROM public.get_my_org_id()))
+  WITH CHECK (NOT (id IS DISTINCT FROM public.get_my_org_id()));
