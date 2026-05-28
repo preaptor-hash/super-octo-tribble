@@ -35,6 +35,7 @@ import {
   PieChart,
   Pie
 } from 'recharts';
+import Papa from 'papaparse';
 import { useHRMSStore } from '../db/store';
 
 export const Dashboard: React.FC = () => {
@@ -101,6 +102,40 @@ export const Dashboard: React.FC = () => {
       setNewAreaZone('');
       setShowAddAreaInline(false);
     }
+  };
+
+  const handleExportCSV = () => {
+    const exportData = workers.map(w => {
+      const area = areas.find(a => a.id === w.area_id);
+      return {
+        Internal_ID: w.internal_id || '',
+        Name: w.full_name || '',
+        Phone: w.phone || '',
+        Gender: w.gender || '',
+        Age: w.age || '',
+        Status: w.worker_status || '',
+        Stage: w.recruitment_stage || '',
+        Skill: w.skill_category || '',
+        Experience_Years: w.experience_years || '',
+        Expected_Salary: w.salary_expected || '',
+        Area: area ? area.name : 'Address not specified',
+        Pincode: w.pincode || '',
+        City: w.city || '',
+        Availability: w.availability || '',
+        Shift_Preference: w.shift_preference || '',
+        Notes: w.notes || ''
+      };
+    });
+    
+    const csv = Papa.unparse(exportData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', `all_workers_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Operational metrics calculations
@@ -216,17 +251,26 @@ export const Dashboard: React.FC = () => {
         
         {/* Main Content Area - Left Column Span 2: Recent Workers */}
         <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-100 shadow-sm p-6 flex flex-col">
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
             <div>
               <h2 className="text-lg font-bold text-slate-900 leading-tight">Recent Workers Roster</h2>
               <p className="text-xs text-slate-400 font-semibold mt-0.5">Quickly view worker profiles and verification status</p>
             </div>
-            <Link 
-              to="/workers" 
-              className="text-xs font-bold text-primary hover:text-primary-dark bg-primary/5 hover:bg-primary/10 px-3 py-1.5 rounded-xl transition-all duration-200"
-            >
-              See All Workers
-            </Link>
+            <div className="flex gap-2">
+              <button
+                onClick={handleExportCSV}
+                className="text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-all duration-200 flex items-center gap-1.5"
+              >
+                <FileText size={14} />
+                Download CSV
+              </button>
+              <Link 
+                to="/workers" 
+                className="text-xs font-bold text-primary hover:text-primary-dark bg-primary/5 hover:bg-primary/10 px-3 py-1.5 rounded-xl transition-all duration-200"
+              >
+                See All Workers
+              </Link>
+            </div>
           </div>
 
           {/* User Requested Table: SHOWS NAME, PHONE, ADDRESS, ENTERED DATE */}
