@@ -55,15 +55,33 @@ const MainLayout = ({ children }) => {
           // Only bootstrap if we don't already have a user in store
           if (!useHRMSStore.getState().currentUser) {
             console.log('✓ Session found, loading user profile...');
-            const { data: profile } = await supabase
+            let { data: profile } = await supabase
               .from('users')
               .select('*')
               .eq('id', session.user.id)
               .maybeSingle();
 
+            // Upsert if missing (new auth user not yet in public.users)
+            if (!profile) {
+              await supabase.from('users').upsert({
+                id: session.user.id,
+                email: session.user.email,
+                full_name: session.user.user_metadata?.full_name
+                  ?? session.user.email?.split('@')[0],
+                role: 'recruiter',
+              }, { onConflict: 'id' });
+              const { data: refetched } = await supabase
+                .from('users').select('*')
+                .eq('id', session.user.id).maybeSingle();
+              profile = refetched;
+            }
+
             if (profile && isMounted) {
               useHRMSStore.setState({ currentUser: profile });
               await loadAll();
+            } else if (isMounted) {
+              // Profile still missing — allow app to redirect to login
+              setAppReady(true);
             }
           }
         } else if (event === 'SIGNED_OUT') {

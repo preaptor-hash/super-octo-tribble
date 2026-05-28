@@ -190,13 +190,31 @@ export const useHRMSStore = create<HRMSState>((set, get) => ({
     if (error || !data.user) return false;
 
     // Fetch the user's profile row from the users table
-    const { data: profile } = await supabase
+    let { data: profile } = await supabase
       .from('users')
       .select('*')
       .eq('id', data.user.id)
       .maybeSingle();
 
-    // Fallback: build a minimal profile from auth metadata if no row exists yet
+    // If no profile row exists yet, create one so RLS checks work
+    if (!profile) {
+      await supabase.from('users').upsert({
+        id: data.user.id,
+        email: data.user.email ?? email,
+        full_name: data.user.user_metadata?.full_name ?? email.split('@')[0],
+        role: 'recruiter',
+      }, { onConflict: 'id' });
+
+      // Re-fetch after upsert to get server-assigned org_id etc.
+      const { data: refetched } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', data.user.id)
+        .maybeSingle();
+      profile = refetched;
+    }
+
+    // Final safety fallback (should never reach here after upsert)
     const currentUser: User = profile ?? {
       id: data.user.id,
       email: data.user.email ?? email,
