@@ -4,6 +4,13 @@ import './index.css'
 import App from './App.tsx'
 import { ErrorBoundary } from './components/error-boundary'
 
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  import('virtual:pwa-register').then(({ registerSW }) => {
+    registerSW({ immediate: true });
+  }).catch(console.error);
+}
+
 // Add error logging
 window.addEventListener('error', (e) => {
   console.error('Global error:', e.error);

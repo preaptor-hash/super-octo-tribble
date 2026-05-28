@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
+import { supabase, uploadToSupabaseStorage } from '../lib/supabase';
 import type {
   User,
   Area,
@@ -69,7 +69,7 @@ interface HRMSState {
     workerId: string,
     type: AttendanceType,
     location: { latitude: number; longitude: number } | null,
-    selfieUrl: string | null,
+    selfieUrl: string | File | null,
     notes: string | null
   ) => Promise<void>;
   checkOut: (workerId: string) => Promise<void>;
@@ -85,7 +85,8 @@ interface HRMSState {
   cancelDeployment: (deploymentId: string) => Promise<void>;
 
   // Documents
-  uploadDocument: (workerId: string, type: string, url: string) => Promise<void>;
+  uploadDocument: (workerId: string, type: string, fileOrUrl: string | File) => Promise<void>;
+  initializeRealtimeSubscriptions: () => void;
 
   // Areas
   addArea: (data: {
@@ -367,14 +368,57 @@ export const useHRMSStore = create<HRMSState>((set, get) => ({
 
   // ── Attendance ────────────────────────────────────────────
   checkIn: async (workerId, type, location, selfieUrl, notes) => {
+    let finalUrl = selfieUrl;
+    
+    // If we're online and have a file, upload it immediately
+    if (selfieUrl instanceof File && navigator.onLine) {
+      const uploadedUrl = await uploadToSupabaseStorage('worker-media', selfieUrl, `selfie_${workerId}`);
+      if (uploadedUrl) finalUrl = uploadedUrl;
+    } else if (selfieUrl instanceof File && !navigator.onLine) {
+      // Offline fallback: store file as base64 string temporarily in the queue
+      const reader = new FileReader();
+      finalUrl = await new Promise<string>((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(selfieUrl);
+      });
+    }
+
     const payload = {
       worker_id: workerId,
       check_in_time: new Date().toISOString(),
       type,
       gps_location: location,
-      selfie_url: selfieUrl,
-      notes,
+      selfie_url: typeof finalUrl === 'string' ? finalUrl : null,
+      notes: !navigator.onLine ? `${notes} (Queued Offline)` : notes,
     };
+
+    if (!navigator.onLine) {
+      console.log('📶 Offline: Queuing check-in locally');
+      const offlineQueue = JSON.parse(localStorage.getItem('vyess_offline_attendance') || '[]');
+      offlineQueue.push(payload);
+      localStorage.setItem('vyess_offline_attendance', JSON.stringify(offlineQueue));
+      
+      // Update UI optimistically
+      const dummyId = `offline-${Date.now()}`;
+      set((s) => ({ attendance: [{...payload, id: dummyId, created_at: payload.check_in_time} as unknown as Attendance, ...s.attendance] }));
+      
+      // Setup one-time online sync listener if not already there
+      if (!(window as any).vyessOfflineListenerAdded) {
+        (window as any).vyessOfflineListenerAdded = true;
+        window.addEventListener('online', async () => {
+          console.log('📶 Back online: Syncing attendance queue...');
+          const queue = JSON.parse(localStorage.getItem('vyess_offline_attendance') || '[]');
+          if (queue.length > 0) {
+            const { error } = await supabase.from('attendance').insert(queue);
+            if (!error) {
+              localStorage.removeItem('vyess_offline_attendance');
+              console.log('📶 Offline queue synced successfully!');
+            }
+          }
+        }, { once: true });
+      }
+      return;
+    }
 
     const { data: inserted, error } = await supabase
       .from('attendance')
@@ -493,12 +537,19 @@ export const useHRMSStore = create<HRMSState>((set, get) => ({
   },
 
   // ── Documents ─────────────────────────────────────────────
-  uploadDocument: async (workerId, type, url) => {
+  uploadDocument: async (workerId, type, fileOrUrl) => {
     const store = get();
+    
+    let finalUrl = fileOrUrl;
+    if (fileOrUrl instanceof File) {
+      const uploadedUrl = await uploadToSupabaseStorage('worker-media', fileOrUrl, `doc_${type}_${workerId}`);
+      if (uploadedUrl) finalUrl = uploadedUrl;
+    }
+
     const payload = {
       worker_id: workerId,
       document_type: type,
-      file_url: url,
+      file_url: typeof finalUrl === 'string' ? finalUrl : '',
       uploaded_by: store.currentUser?.id ?? null,
     };
 
@@ -649,5 +700,54 @@ export const useHRMSStore = create<HRMSState>((set, get) => ({
       areas: [],
     });
     get().loadAll();
+  },
+
+  initializeRealtimeSubscriptions: () => {
+    const store = get();
+    if (!store.currentUser) return;
+
+    console.log('🔌 Initializing Supabase Realtime Sync...');
+    
+    const channel = supabase.channel('vyess-hrms-live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'workers' },
+        (payload) => {
+          console.log('Realtime worker update received!', payload);
+          if (payload.eventType === 'INSERT') {
+            set((s) => {
+              // Ensure we don't duplicate
+              if (s.workers.some(w => w.id === payload.new.id)) return s;
+              return { workers: [payload.new as Worker, ...s.workers] };
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            set((s) => ({
+              workers: s.workers.map(w => w.id === payload.new.id ? { ...w, ...payload.new } : w)
+            }));
+          } else if (payload.eventType === 'DELETE') {
+            set((s) => ({
+              workers: s.workers.filter(w => w.id !== payload.old.id)
+            }));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'attendance' },
+        (payload) => {
+          console.log('Realtime attendance update received!', payload);
+          if (payload.eventType === 'INSERT') {
+            set((s) => {
+              if (s.attendance.some(a => a.id === payload.new.id)) return s;
+              return { attendance: [payload.new as Attendance, ...s.attendance] };
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            set((s) => ({
+              attendance: s.attendance.map(a => a.id === payload.new.id ? { ...a, ...payload.new } : a)
+            }));
+          }
+        }
+      )
+      .subscribe();
   },
 }));

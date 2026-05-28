@@ -79,6 +79,8 @@ const MainLayout = ({ children }) => {
             if (profile && isMounted) {
               useHRMSStore.setState({ currentUser: profile });
               await loadAll();
+              useHRMSStore.getState().initializeRealtimeSubscriptions();
+              setAppReady(true);
             } else if (isMounted) {
               // Profile still missing — allow app to redirect to login
               setAppReady(true);

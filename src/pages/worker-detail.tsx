@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import imageCompression from 'browser-image-compression';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -64,9 +65,9 @@ export const WorkerDetail: React.FC = () => {
   const [depShift, setDepShift] = useState('General Shift (9:00 AM - 6:00 PM)');
   const [joiningDate, setJoiningDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Tab 5 Document mock and dynamic upload states
+  // Tab 5 Document dynamic upload states
   const [docType, setDocType] = useState('aadhaar');
-  const [fileDataUrl, setFileDataUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [previewDocUrl, setPreviewDocUrl] = useState<string | null>(null);
@@ -147,35 +148,44 @@ export const WorkerDetail: React.FC = () => {
     setActiveTab('deploy');
   };
 
-  const handleDocUpload = (e: React.FormEvent) => {
+  const handleDocUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     
-    if (fileDataUrl) {
-      uploadDocument(worker.id, docType, fileDataUrl);
+    if (selectedFile) {
+      await uploadDocument(worker.id, docType, selectedFile);
       alert(`${docType.toUpperCase()} document copy uploaded successfully!`);
       // Reset upload fields
-      setFileDataUrl(null);
+      setSelectedFile(null);
       setFileName('');
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setErrorMsg('');
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 3 * 1024 * 1024) {
-        setErrorMsg('File size exceeds the 3 MB limit. Please choose a smaller file.');
-        setFileDataUrl(null);
+      if (file.size > 10 * 1024 * 1024) {
+        setErrorMsg('File size exceeds the 10 MB limit. Please choose a smaller file.');
+        setSelectedFile(null);
         setFileName('');
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFileDataUrl(reader.result as string);
+      
+      try {
+        const options = {
+          maxSizeMB: 0.5,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        };
+        const compressedFile = await imageCompression(file, options);
+        setSelectedFile(compressedFile);
         setFileName(file.name);
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error("Compression error, using original file:", err);
+        setSelectedFile(file);
+        setFileName(file.name);
+      }
     }
   };
 
@@ -796,7 +806,7 @@ export const WorkerDetail: React.FC = () => {
                   <div className="flex justify-end pt-2 border-t border-slate-100">
                     <button
                       type="submit"
-                      disabled={!fileDataUrl || !!errorMsg}
+                      disabled={!selectedFile || !!errorMsg}
                       className="w-full md:w-auto h-11 px-6 bg-gradient-to-tr from-primary to-primary-light text-white font-extrabold rounded-xl text-sm flex items-center justify-center gap-1.5 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md cursor-pointer border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Upload size={14} />

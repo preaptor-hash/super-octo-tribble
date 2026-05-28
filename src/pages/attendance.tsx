@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import imageCompression from 'browser-image-compression';
 import { 
   CalendarDays, 
   MapPin, 
@@ -6,7 +7,7 @@ import {
   CheckCircle2, 
   Clock
 } from 'lucide-react';
-import { useHRMSStore } from '../db/store';
+import { useHRMSStore, calculateDistance } from '../db/store';
 import type { AttendanceType } from '../types';
 
 export const Attendance: React.FC = () => {
@@ -14,7 +15,7 @@ export const Attendance: React.FC = () => {
   
   const [selectedWorkerId, setSelectedWorkerId] = useState('');
   const [attType, setAttType] = useState<AttendanceType>('present');
-  const [selfieCaptured, setSelfieCaptured] = useState<string | null>(null);
+  const [selfieCaptured, setSelfieCaptured] = useState<File | null>(null);
   const [attNotes, setAttNotes] = useState('');
   const [isLocating, setIsLocating] = useState(false);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -46,14 +47,20 @@ export const Attendance: React.FC = () => {
     }
   };
 
-  const handleSelfieCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSelfieCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelfieCaptured(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedFile = await imageCompression(file, {
+          maxSizeMB: 0.2,
+          maxWidthOrHeight: 800,
+          useWebWorker: true,
+        });
+        setSelfieCaptured(compressedFile);
+      } catch (err) {
+        console.error("Compression error:", err);
+        setSelfieCaptured(file);
+      }
     }
   };
 
@@ -64,13 +71,31 @@ export const Attendance: React.FC = () => {
       return;
     }
 
+    let finalNotes = attNotes || `Checked in via field recruiter app.`;
+
+    // ── GEOFENCING LOGIC ──
+    const worker = activeWorkers.find(w => w.id === selectedWorkerId);
+    if (worker && worker.area_id && coords) {
+      const area = areas.find(a => a.id === worker.area_id);
+      if (area && area.latitude && area.longitude) {
+        const distMeters = calculateDistance(
+          coords.latitude, coords.longitude,
+          area.latitude, area.longitude
+        );
+        
+        if (distMeters > 500) {
+          finalNotes += ` [WARNING: Out of Bounds Check-in. Worker is ${Math.round(distMeters)}m away from assigned area centroid]`;
+        }
+      }
+    }
+
     // Call store action
     checkIn(
       selectedWorkerId,
       attType,
       coords,
       selfieCaptured,
-      attNotes || `Checked in via field recruiter app.`
+      finalNotes
     );
 
     alert('Attendance successfully recorded!');

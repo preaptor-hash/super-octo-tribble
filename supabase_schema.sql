@@ -266,3 +266,19 @@ CREATE POLICY "organizations_all" ON public.organizations
   FOR ALL TO authenticated
   USING (NOT (id IS DISTINCT FROM public.get_my_org_id()))
   WITH CHECK (NOT (id IS DISTINCT FROM public.get_my_org_id()));
+
+ - -   = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ - -   S T O R A G E   B U C K E T S   &   P O L I C I E S 
+ - -   = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ I N S E R T   I N T O   s t o r a g e . b u c k e t s   ( i d ,   n a m e ,   p u b l i c )   V A L U E S   ( ' w o r k e r - m e d i a ' ,   ' w o r k e r - m e d i a ' ,   t r u e )   O N   C O N F L I C T   ( i d )   D O   N O T H I N G ; 
+ 
+ C R E A T E   P O L I C Y   " P u b l i c   A c c e s s "   O N   s t o r a g e . o b j e c t s   F O R   S E L E C T   U S I N G   ( b u c k e t _ i d   =   ' w o r k e r - m e d i a ' ) ; 
+ C R E A T E   P O L I C Y   " A u t h   I n s e r t "   O N   s t o r a g e . o b j e c t s   F O R   I N S E R T   W I T H   C H E C K   ( b u c k e t _ i d   =   ' w o r k e r - m e d i a '   A N D   a u t h . r o l e ( )   =   ' a u t h e n t i c a t e d ' ) ; 
+ 
+ - -   = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ - -   R E A L T I M E   S U B S C R I P T I O N S 
+ - -   = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+ A L T E R   P U B L I C A T I O N   s u p a b a s e _ r e a l t i m e   A D D   T A B L E   p u b l i c . w o r k e r s ; 
+ A L T E R   P U B L I C A T I O N   s u p a b a s e _ r e a l t i m e   A D D   T A B L E   p u b l i c . a t t e n d a n c e ; 
+  
+ 

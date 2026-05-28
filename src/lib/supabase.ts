@@ -23,6 +23,25 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
 });
 
 // Test connection on load
+export const uploadToSupabaseStorage = async (bucket: string, file: File, pathPrefix: string): Promise<string | null> => {
+  const fileExt = file.name.split('.').pop() || 'jpg';
+  const fileName = `${pathPrefix}_${Date.now()}.${fileExt}`;
+  
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(fileName, file);
+
+  if (error) {
+    console.error('Upload to storage error:', error.message);
+    return null;
+  }
+
+  const { data } = supabase.storage
+    .from(bucket)
+    .getPublicUrl(fileName);
+
+  return data.publicUrl;
+};
 supabase.auth.getSession()
   .then(({ error }) => {
     if (error) {

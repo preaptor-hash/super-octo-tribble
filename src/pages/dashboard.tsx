@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix Leaflet's default icon paths
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 import { Loader2 } from 'lucide-react';
 import { 
   Users, 
@@ -383,6 +394,67 @@ export const Dashboard: React.FC = () => {
           ) : (
             <span className="text-xs text-slate-400 italic">No area distribution data</span>
           )}
+        </div>
+      </div>
+
+      {/* Live Check-in Map Widget */}
+      <div className="max-w-6xl mx-auto bg-white rounded-3xl border border-slate-100 shadow-sm p-6 mb-8 overflow-hidden">
+        <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <MapPin className="text-rose-500" size={18} />
+          Live Field Activity Map
+        </h2>
+        <p className="text-xs text-slate-400 font-semibold mb-4">Tracking recent active check-ins and their distance from assigned areas</p>
+        
+        <div className="h-[400px] w-full rounded-2xl overflow-hidden border border-slate-100 z-0 relative">
+          <MapContainer 
+            center={[20.5937, 78.9629]} // default center (India)
+            zoom={5} 
+            scrollWheelZoom={false}
+            className="h-full w-full"
+          >
+            <TileLayer
+              attribution='&copy; OpenStreetMap'
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            />
+            
+            {/* Draw Area Boundaries (Circles based on 500m geofence) */}
+            {areas.filter(a => a.latitude && a.longitude).map(area => (
+              <Circle
+                key={`area-${area.id}`}
+                center={[area.latitude!, area.longitude!]}
+                radius={500}
+                pathOptions={{ color: '#4f46e5', fillColor: '#4f46e5', fillOpacity: 0.1, weight: 1 }}
+              >
+                <Popup>
+                  <div className="font-bold text-sm">{area.name}</div>
+                  <div className="text-xs text-slate-500 mt-1">Geofence Radius: 500m</div>
+                </Popup>
+              </Circle>
+            ))}
+
+            {/* Draw Recent Check-ins */}
+            {attendance
+              .filter(a => a.gps_location)
+              .slice(0, 50) // limit to 50 latest
+              .map(att => {
+                const w = workers.find(w => w.id === att.worker_id);
+                return (
+                  <Marker 
+                    key={`att-${att.id}`} 
+                    position={[att.gps_location!.latitude, att.gps_location!.longitude]}
+                  >
+                    <Popup>
+                      <div className="text-sm font-bold text-slate-800">{w?.full_name || 'Unknown Worker'}</div>
+                      <div className="text-xs font-semibold text-slate-500 mb-1">{new Date(att.check_in_time).toLocaleTimeString()}</div>
+                      <div className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-600 inline-block uppercase font-bold tracking-wider">{att.type}</div>
+                      {att.notes && att.notes.includes('Out of Bounds') && (
+                        <div className="mt-1.5 text-[10px] text-rose-600 font-bold bg-rose-50 px-2 py-1 rounded">Out of Bounds Warning</div>
+                      )}
+                    </Popup>
+                  </Marker>
+                );
+            })}
+          </MapContainer>
         </div>
       </div>
 
