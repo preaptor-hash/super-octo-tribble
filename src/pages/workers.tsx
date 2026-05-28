@@ -197,58 +197,63 @@ export const Workers: React.FC = () => {
             <p className="text-slate-500 text-sm mt-1 font-medium">Discover, verify, and deploy field staff in Trichy</p>
           </div>
           
-          {/* View toggle (Map vs List) */}
-          <div className="bg-slate-200/60 p-1 rounded-2xl flex items-center border border-slate-300/20">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${
-                viewMode === 'list' 
-                  ? 'bg-white text-slate-800 shadow-sm' 
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <List size={14} />
-              List Feed
-            </button>
-            <button
-              onClick={() => setViewMode('map')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${
-                viewMode === 'map' 
-                  ? 'bg-white text-slate-800 shadow-sm' 
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Map size={14} />
-              Map View
-            </button>
+          {/* View Toggle & CSV Actions */}
+          <div className="flex items-center gap-3">
+            {/* CSV Actions */}
+            <div className="flex items-center gap-2">
+              <input 
+                type="file" 
+                accept=".csv" 
+                ref={fileInputRef} 
+                onChange={handleImportCSV} 
+                className="hidden" 
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+                title="Import CSV"
+                className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-primary transition-all shadow-sm"
+              >
+                <Upload size={16} className={isImporting ? "animate-bounce" : ""} />
+              </button>
+              <button
+                onClick={handleExportCSV}
+                title="Export CSV"
+                className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-primary transition-all shadow-sm"
+              >
+                <Download size={16} />
+              </button>
+            </div>
+            
+            {/* View toggle (Map vs List) */}
+            <div className="bg-slate-200/60 p-1 rounded-2xl flex items-center border border-slate-300/20">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${
+                  viewMode === 'list' 
+                    ? 'bg-white text-slate-800 shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <List size={14} />
+                <span className="hidden sm:inline">List Feed</span>
+              </button>
+              <button
+                onClick={() => setViewMode('map')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-extrabold transition-all duration-200 ${
+                  viewMode === 'map' 
+                    ? 'bg-white text-slate-800 shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <Map size={14} />
+                <span className="hidden sm:inline">Map View</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* CSV Actions */}
-        <div className="flex gap-2 justify-end mb-2">
-          <input 
-            type="file" 
-            accept=".csv" 
-            ref={fileInputRef} 
-            onChange={handleImportCSV} 
-            className="hidden" 
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isImporting}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
-          >
-            <Upload size={14} />
-            {isImporting ? 'Importing...' : 'Import CSV'}
-          </button>
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
-          >
-            <Download size={14} />
-            Export CSV
-          </button>
-        </div>
+
 
         {/* Global Search and Filter Activator */}
         <div className="flex gap-2">
