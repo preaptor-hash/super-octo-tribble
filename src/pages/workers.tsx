@@ -109,30 +109,74 @@ export const Workers: React.FC = () => {
       skipEmptyLines: true,
       complete: async (results) => {
         try {
+          const { supabase, loadAll } = useHRMSStore.getState();
+          const currentAreas = useHRMSStore.getState().areas;
+          const currentWorkers = useHRMSStore.getState().workers;
+          
+          const insertPayloads = [];
+
           for (const row of results.data as any[]) {
-            if (row.Phone && workers.some(w => w.phone === row.Phone)) {
+            // Skip if phone number already exists
+            if (row.Phone && currentWorkers.some(w => w.phone === row.Phone)) {
               continue;
             }
             
             let areaId = null;
             if (row.Area && row.Area !== 'Address not specified') {
-              const existingArea = areas.find(a => a.name.toLowerCase() === row.Area.toLowerCase());
+              const existingArea = currentAreas.find(a => a.name.toLowerCase() === row.Area.toLowerCase());
               if (existingArea) {
                 areaId = existingArea.id;
               } else {
-                const newArea = await addArea({ name: row.Area, pincode: row.Pincode || null, zone: null, latitude: null, longitude: null });
-                if (newArea) areaId = newArea.id;
+                // If the area doesn't exist, create it on the fly
+                const { data: newArea } = await supabase.from('areas').insert({
+                  name: row.Area,
+                  pincode: row.Pincode || null,
+                  zone: null,
+                }).select().single();
+                if (newArea) {
+                  areaId = newArea.id;
+                  currentAreas.push(newArea);
+                }
               }
             }
 
-            await fastAddWorker({
+            const nextIdNum = currentWorkers.length + insertPayloads.length + 1;
+            const internalId = row.Internal_ID || `CRW-2026-${String(nextIdNum).padStart(4, '0')}`;
+
+            insertPayloads.push({
+              internal_id: internalId,
               full_name: row.Name || null,
               phone: row.Phone || null,
-              skill_category: row.Skill || null,
               gender: row.Gender?.toLowerCase() || 'male',
+              age: row.Age ? parseInt(row.Age, 10) : null,
+              worker_status: row.Status?.toLowerCase() || 'draft',
+              recruitment_stage: row.Stage?.toLowerCase() || 'new',
+              skill_category: row.Skill || null,
+              experience_years: row.Experience_Years ? parseInt(row.Experience_Years, 10) : null,
+              salary_expected: row.Expected_Salary ? parseInt(row.Expected_Salary, 10) : null,
               area_id: areaId,
+              pincode: row.Pincode || null,
+              city: row.City || 'Trichy',
+              availability: row.Availability?.toLowerCase() || 'immediate',
+              shift_preference: row.Shift_Preference?.toLowerCase() || 'any',
+              notes: row.Notes || 'Imported via CSV',
+              assigned_recruiter_id: useHRMSStore.getState().currentUser?.id ?? null,
+              branch_id: useHRMSStore.getState().currentUser?.branch_id ?? null,
+              organization_id: useHRMSStore.getState().currentUser?.organization_id ?? null,
             });
           }
+
+          if (insertPayloads.length > 0) {
+            console.log('Inserting workers from CSV:', insertPayloads);
+            const { error } = await supabase.from('workers').insert(insertPayloads);
+            if (error) throw error;
+            // Reload store to fetch new workers
+            await loadAll();
+          }
+
+        } catch (error) {
+          console.error("CSV Import Error:", error);
+          alert("Failed to import CSV to database. Check console for details.");
         } finally {
           setIsImporting(false);
           if (fileInputRef.current) fileInputRef.current.value = '';

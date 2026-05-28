@@ -181,7 +181,7 @@ export const Dashboard: React.FC = () => {
   }));
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-28 pt-6 px-4 md:px-8 font-sans">
+    <div className="min-h-screen bg-slate-50/50 pb-28 md:pb-8 pt-6 px-4 md:px-8 font-sans">
       {/* Top Welcome Bar */}
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>

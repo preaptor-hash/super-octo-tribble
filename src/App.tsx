@@ -194,7 +194,7 @@ const MainLayoutInner = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc]/30 flex flex-col font-sans relative overflow-hidden">
+    <div className="min-h-screen bg-[#f8fafc]/30 flex flex-col font-sans relative overflow-x-hidden">
       <div className="absolute top-[-100px] left-[-80px] fluid-orb-indigo pointer-events-none z-0"></div>
       <div className="absolute bottom-[20%] right-[-100px] fluid-orb-emerald pointer-events-none z-0"></div>
       <div className="absolute top-[40%] left-[70%] fluid-orb-amber pointer-events-none z-0"></div>
