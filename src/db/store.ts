@@ -251,7 +251,15 @@ export const useHRMSStore = create<HRMSState>((set, get) => ({
   // ── Workers ───────────────────────────────────────────────
   fastAddWorker: async (data) => {
     const store = get();
-    const nextIdNum = store.workers.length + 1;
+    // Find the max internal_id suffix to avoid collisions when workers have been deleted
+    const maxIdNum = store.workers.reduce((max, w) => {
+      if (w.internal_id && w.internal_id.startsWith('CRW-2026-')) {
+        const num = parseInt(w.internal_id.replace('CRW-2026-', ''), 10);
+        return !isNaN(num) && num > max ? num : max;
+      }
+      return max;
+    }, 0);
+    const nextIdNum = maxIdNum + 1;
     const internalId = `CRW-2026-${String(nextIdNum).padStart(4, '0')}`;
 
     const area = store.areas.find((a) => a.id === data.area_id);

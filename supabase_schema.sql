@@ -1,6 +1,6 @@
 -- Vyesshrms: Complete Supabase PostgreSQL Schema Migration
 -- Designed for real-world manpower and field staffing operations in Trichy.
--- Last updated: Fixed RLS recursive loop, location column type, WITH CHECK clauses.
+-- Last updated: Revoked anon/authenticated access to PostGIS spatial_ref_sys table.
 
 -- 1. Enable Required Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -151,6 +151,26 @@ ALTER TABLE public.attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.deployments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notes_timeline ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- AUTO-GENERATE WORKER INTERNAL IDs
+-- ============================================================
+CREATE SEQUENCE IF NOT EXISTS public.worker_internal_id_seq START 1;
+
+CREATE OR REPLACE FUNCTION public.set_worker_internal_id()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.internal_id IS NULL OR NEW.internal_id = '' OR NEW.internal_id LIKE 'CRW-2026-%' THEN
+    NEW.internal_id := 'CRW-2026-' || LPAD(nextval('public.worker_internal_id_seq')::text, 4, '0');
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER trigger_set_worker_internal_id
+  BEFORE INSERT ON public.workers
+  FOR EACH ROW EXECUTE FUNCTION public.set_worker_internal_id();
+
 
 -- ============================================================
 -- SECURITY DEFINER HELPER (avoids recursive RLS on users table)

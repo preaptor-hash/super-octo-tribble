@@ -106,6 +106,9 @@ export const WorkerDetail: React.FC = () => {
     (!missingAadhaar ? 15 : 0) +
     (!missingPhoto ? 15 : 0);
 
+  const assignedRecruiter = users.find(u => u.id === worker.assigned_recruiter_id);
+  const assignedRecruiterName = assignedRecruiter?.full_name || 'Admin User';
+
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
     updateWorker(worker.id, {
@@ -277,7 +280,7 @@ export const WorkerDetail: React.FC = () => {
           {/* Action Row */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-t border-slate-100/70 mt-5 pt-4">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              Assigned Recruiter: <span className="text-slate-700 font-extrabold">Karthik Raja</span>
+              Assigned Recruiter: <span className="text-slate-700 font-extrabold">{assignedRecruiterName}</span>
             </span>
             <button
               onClick={handleDelete}

@@ -112,6 +112,15 @@ export const Workers: React.FC = () => {
       
       const insertPayloads = [];
 
+      // Find the max internal_id suffix to avoid collisions when workers have been deleted
+      let maxIdNum = currentWorkers.reduce((max, w) => {
+        if (w.internal_id && w.internal_id.startsWith('CRW-2026-')) {
+          const num = parseInt(w.internal_id.replace('CRW-2026-', ''), 10);
+          return !isNaN(num) && num > max ? num : max;
+        }
+        return max;
+      }, 0);
+
       // Helper to dynamically extract keys case-insensitively and space-insensitively
       const getVal = (r: Record<string, unknown>, keyPattern: string) => {
         const keys = Object.keys(r);
@@ -163,8 +172,11 @@ export const Workers: React.FC = () => {
         const rawInternalId = getVal(row, 'internalid');
         const internalIdStr = rawInternalId !== undefined && rawInternalId !== null ? String(rawInternalId).trim() : null;
 
-        const nextIdNum = currentWorkers.length + insertPayloads.length + 1;
-        const internalId = internalIdStr || `CRW-2026-${String(nextIdNum).padStart(4, '0')}`;
+        let internalId = internalIdStr;
+        if (!internalId) {
+          maxIdNum++;
+          internalId = `CRW-2026-${String(maxIdNum).padStart(4, '0')}`;
+        }
 
         const rawName = getVal(row, 'name');
         const nameStr = rawName !== undefined && rawName !== null ? String(rawName).trim() : null;
