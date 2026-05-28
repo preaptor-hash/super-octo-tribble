@@ -46,7 +46,8 @@ export const Workers: React.FC = () => {
       stage: stageFilter ? [stageFilter as RecruitmentStage] : undefined,
       incompleteOnly: incompleteOnly || undefined,
     });
-  }, [searchQuery, selectedAreaId, radiusKm, genderFilter, statusFilter, stageFilter, incompleteOnly, searchWorkers]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, selectedAreaId, radiusKm, genderFilter, statusFilter, stageFilter, incompleteOnly]);
 
   const handleAddAreaInline = async () => {
     if (!newAreaName.trim()) return;

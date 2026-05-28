@@ -236,6 +236,8 @@ export const useHRMSStore = create<HRMSState>((set, get) => ({
 
   logout: async () => {
     await supabase.auth.signOut();
+    // Clear realtime guard so next login re-subscribes
+    delete (window as unknown as Record<string, unknown>).__vyessRealtimeActive;
     set({
       currentUser: null,
       users: [],
@@ -705,6 +707,10 @@ export const useHRMSStore = create<HRMSState>((set, get) => ({
   initializeRealtimeSubscriptions: () => {
     const store = get();
     if (!store.currentUser) return;
+
+    // Guard: only subscribe once per session
+    if ((window as unknown as Record<string, unknown>).__vyessRealtimeActive) return;
+    (window as unknown as Record<string, unknown>).__vyessRealtimeActive = true;
 
     console.log('🔌 Initializing Supabase Realtime Sync...');
     

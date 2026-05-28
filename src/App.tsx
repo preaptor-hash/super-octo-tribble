@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import React from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -32,7 +33,7 @@ import { Settings } from './pages/settings';
 import { BottomNav } from './components/bottom-nav';
 
 // ─── Auth guard + data bootstrap ─────────────────────────────
-const MainLayout = ({ children }) => {
+const MainLayout = ({ children }: { children: React.ReactNode }) => {
   const { currentUser, loadAll } = useHRMSStore();
   const [appReady, setAppReady] = useState(false);
 
@@ -136,7 +137,7 @@ const MainLayout = ({ children }) => {
 };
 
 // Separated so hooks aren't conditional
-const MainLayoutInner = ({ children }) => {
+const MainLayoutInner = ({ children }: { children: React.ReactNode }) => {
   const { currentUser, logout, fastAddWorker, areas, addArea } = useHRMSStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -155,7 +156,7 @@ const MainLayoutInner = ({ children }) => {
   const [newAreaPincode, setNewAreaPincode] = useState('');
   const [newAreaZone, setNewAreaZone] = useState('');
 
-  const handleGlobalFastAdd = async (e) => {
+  const handleGlobalFastAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     const newWorker = await fastAddWorker({
