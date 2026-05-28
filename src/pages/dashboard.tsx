@@ -273,8 +273,71 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* User Requested Table: SHOWS NAME, PHONE, ADDRESS, ENTERED DATE */}
-          <div className="overflow-x-auto">
+          {/* Mobile View: Premium Cards for Roster */}
+          <div className="md:hidden flex flex-col gap-3">
+            {recentWorkers.map(w => {
+              const matchedArea = areas.find(a => a.id === w.area_id);
+              const entryDate = new Date(w.created_at).toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+              });
+
+              return (
+                <div key={`mobile-${w.id}`} className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col relative overflow-hidden">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex flex-col">
+                      <Link to={`/workers/${w.id}`} className="font-extrabold text-slate-800 text-sm hover:text-primary transition-colors">
+                        {w.full_name || <span className="text-slate-400 italic">Not specified</span>}
+                      </Link>
+                      {w.skill_category && (
+                        <span className="text-[10px] text-primary-light uppercase tracking-wider font-extrabold mt-0.5">
+                          {w.skill_category}
+                        </span>
+                      )}
+                    </div>
+                    <span className={`text-[9px] uppercase tracking-wider font-extrabold px-2 py-1 rounded-md border ${
+                      w.worker_status === 'active'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                        : w.worker_status === 'deployed'
+                        ? 'bg-blue-50 text-blue-700 border-blue-100'
+                        : w.worker_status === 'draft'
+                        ? 'bg-amber-50 text-amber-700 border-amber-100'
+                        : 'bg-rose-50 text-rose-700 border-rose-100'
+                    }`}>
+                      {w.worker_status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 mt-1">
+                    {w.phone && (
+                      <div className="text-[11px] text-slate-600 font-mono flex items-center gap-1.5 bg-white p-2 rounded-xl border border-slate-100">
+                        <Phone size={12} className="text-slate-400" />
+                        {w.phone}
+                      </div>
+                    )}
+                    
+                    <div className="text-[11px] text-slate-600 flex items-center gap-1.5 bg-white p-2 rounded-xl border border-slate-100">
+                      <MapPin size={12} className="text-slate-400" />
+                      {matchedArea ? (
+                        <span className="truncate">{matchedArea.name}</span>
+                      ) : (
+                        <span className="text-amber-600/80 italic font-bold">Address not specified</span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-3 pt-3 border-t border-slate-100">
+                    <Calendar size={10} />
+                    Added on {entryDate}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop View: Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 text-slate-400 text-[10px] uppercase tracking-wider font-extrabold">
