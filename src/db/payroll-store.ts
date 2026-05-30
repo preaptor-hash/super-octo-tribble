@@ -349,8 +349,8 @@ export const usePayrollStore = create<PayrollState>((set, get) => ({
     await supabase.from('payroll_records').update({
       status,
       updated_at:   now,
-      generated_at: status === 'generated' ? now : null,
-      paid_at:      status === 'paid'      ? now : null,
+      ...(status === 'generated' ? { generated_at: now } : {}),
+      ...(status === 'paid'      ? { paid_at: now }      : {}),
     }).eq('id', id);
   },
 

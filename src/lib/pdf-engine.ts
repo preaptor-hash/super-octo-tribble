@@ -417,7 +417,7 @@ function drawFooter(doc: jsPDF, company: CompanyPayrollSettings): void {
 
   // Dynamic website from company settings
   const website = company.website ?? 'www.vyessfms.com';
-  const displayUrl = website.replace(/^https?:\/\//, '').split('').join(' ');
+  const displayUrl = website.replace(/^https?:\/\//, '');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9.5);
