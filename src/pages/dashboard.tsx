@@ -47,7 +47,8 @@ export const Dashboard: React.FC = () => {
     areas, 
     attendance, 
     fastAddWorker,
-    addArea
+    addArea,
+    activeLocation
   } = useHRMSStore();
 
   // Rapid Worker Add Modal State
@@ -183,7 +184,7 @@ export const Dashboard: React.FC = () => {
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Recruiter Operations</h1>
           <p className="text-slate-500 text-sm mt-1 font-medium">
-            Welcome back, <span className="text-primary font-bold">{currentUser?.full_name}</span> • Trichy Main Branch
+            Welcome back, <span className="text-primary font-bold">{currentUser?.full_name}</span> • {activeLocation}
           </p>
         </div>
         <button

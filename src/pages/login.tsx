@@ -11,6 +11,15 @@ export const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  // Load company logo if available in localStorage
+  useEffect(() => {
+    const savedLogo = localStorage.getItem('vyess_company_logo');
+    if (savedLogo) {
+      setLogoUrl(savedLogo);
+    }
+  }, []);
 
   // If already logged in, skip login page entirely
   useEffect(() => {
@@ -50,8 +59,8 @@ export const Login: React.FC = () => {
       <div className="w-full max-w-[420px] glass-dark rounded-[2.5rem] p-8 shadow-2xl relative z-10 border border-white/10 animate-slide-up backdrop-blur-xl">
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-tr from-primary to-primary-light text-white rounded-2xl flex items-center justify-center shadow-[0_0_40px_rgba(79,70,229,0.3)] border-2 border-white/20 mb-6 mx-auto">
-            <img src="/logo.png" alt="Vyesshrms Logo" className="w-10 h-10 object-contain" />
+          <div className="w-16 h-16 bg-gradient-to-tr from-primary to-primary-light text-white rounded-2xl flex items-center justify-center shadow-[0_0_40px_rgba(79,70,229,0.3)] border-2 border-white/20 mb-6 mx-auto overflow-hidden">
+            <img src={logoUrl || "/logo.png"} alt="Vyesshrms Logo" className="w-full h-full object-contain p-1" />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">Vyesshrms</h1>
           <p className="text-slate-400 text-[13px] font-medium tracking-wide">

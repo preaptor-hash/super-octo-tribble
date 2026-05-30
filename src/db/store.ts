@@ -116,6 +116,10 @@ interface HRMSState {
 
   // System
   resetDatabase: () => void;
+
+  // Active Location
+  activeLocation: string;
+  setActiveLocation: (location: string) => void;
 }
 
 // ─── Store ────────────────────────────────────────────────────
@@ -128,6 +132,12 @@ export const useHRMSStore = create<HRMSState>((set, get) => ({
   notesTimeline: [],
   deployments: [],
   documents: [],
+  activeLocation: localStorage.getItem('vyess_active_location') || 'Trichy Main Branch',
+
+  setActiveLocation: (location: string) => {
+    localStorage.setItem('vyess_active_location', location);
+    set({ activeLocation: location });
+  },
 
   // ── Bootstrap: load everything from Supabase ──────────────
   loadAll: async () => {

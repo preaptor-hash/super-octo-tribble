@@ -37,22 +37,17 @@ function drawHeader(doc: jsPDF, company: CompanyPayrollSettings): number {
   // Pure white content background area below Y=70
   doc.rect(0, 70, PW, PH - 70, 'F');
 
-  // 3. Draw the V Logo (cyan/blue hand-shake emblem motif)
-  doc.setFillColor(255, 255, 255);
-  doc.circle(28, 26, 12, 'F');
-  
-  doc.setDrawColor(...C.logoBlue);
-  doc.setLineWidth(0.6);
-  doc.circle(28, 26, 12, 'S');
-
-  // Cyan stroke for left leg
-  doc.setDrawColor(0, 180, 240);
-  doc.setLineWidth(2.5);
-  doc.line(22, 20, 26, 32);
-
-  // Dark blue stroke for right leg
-  doc.setDrawColor(0, 40, 100);
-  doc.line(26, 32, 34, 18);
+  // 3. Draw the Logo (custom uploaded or default V logo)
+  if (company.logoUrl) {
+    try {
+      doc.addImage(company.logoUrl, 'PNG', 16, 14, 24, 24, undefined, 'FAST');
+    } catch (e) {
+      console.error("Failed to add custom company logo to PDF, falling back to default.", e);
+      drawDefaultLogo(doc);
+    }
+  } else {
+    drawDefaultLogo(doc);
+  }
 
   // 4. Company Name next to logo
   doc.setFont('helvetica', 'bold');
@@ -74,6 +69,24 @@ function drawHeader(doc: jsPDF, company: CompanyPayrollSettings): number {
   doc.text(addrLines, 20, 58, { lineHeightFactor: 1.3 });
 
   return 76; // Position where the actual content starts
+}
+
+function drawDefaultLogo(doc: jsPDF): void {
+  doc.setFillColor(255, 255, 255);
+  doc.circle(28, 26, 12, 'F');
+  
+  doc.setDrawColor(...C.logoBlue);
+  doc.setLineWidth(0.6);
+  doc.circle(28, 26, 12, 'S');
+
+  // Cyan stroke for left leg
+  doc.setDrawColor(0, 180, 240);
+  doc.setLineWidth(2.5);
+  doc.line(22, 20, 26, 32);
+
+  // Dark blue stroke for right leg
+  doc.setDrawColor(0, 40, 100);
+  doc.line(26, 32, 34, 18);
 }
 
 // ─── Draw CONFIDENTIAL diagonal watermark ─────────────────────────

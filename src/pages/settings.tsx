@@ -13,7 +13,8 @@ import {
   Download,
   AlertCircle,
   DollarSign,
-  Shield
+  Shield,
+  Upload
 } from 'lucide-react';
 import { useHRMSStore } from '../db/store';
 import { usePayrollStore } from '../db/payroll-store';
@@ -61,6 +62,7 @@ export const Settings: React.FC = () => {
   const [contactNumbers, setContactNumbers] = useState(company.contactNumbers);
   const [email, setEmail] = useState(company.email);
   const [website, setWebsite] = useState(company.website);
+  const [logoUrl, setLogoUrl] = useState<string | undefined>(company.logoUrl);
   const [enablePasswordProtection, setEnablePasswordProtection] = useState(company.enablePasswordProtection);
   const [passwordCase, setPasswordCase] = useState(company.passwordCase);
   const [footerText, setFooterText] = useState(company.footerText);
@@ -72,11 +74,24 @@ export const Settings: React.FC = () => {
       setContactNumbers(company.contactNumbers);
       setEmail(company.email);
       setWebsite(company.website);
+      setLogoUrl(company.logoUrl);
       setEnablePasswordProtection(company.enablePasswordProtection);
       setPasswordCase(company.passwordCase);
       setFooterText(company.footerText);
     });
   }, [company]);
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        setLogoUrl(base64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSaveCompany = async () => {
     await updateCompany({
@@ -85,10 +100,17 @@ export const Settings: React.FC = () => {
       contactNumbers,
       email,
       website,
+      logoUrl,
       enablePasswordProtection,
       passwordCase,
       footerText,
     });
+    // Save to localStorage too so it's visible on login screen immediately
+    if (logoUrl) {
+      localStorage.setItem('vyess_company_logo', logoUrl);
+    } else {
+      localStorage.removeItem('vyess_company_logo');
+    }
     alert('Company payroll settings successfully saved to Supabase!');
   };
 
@@ -567,6 +589,40 @@ export const Settings: React.FC = () => {
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Company Logo Upload */}
+                  <div className="md:col-span-2 bg-slate-50 p-5 rounded-2xl border border-slate-200/50 flex flex-col md:flex-row items-center gap-6 mb-2">
+                    <div className="w-20 h-20 bg-white rounded-2xl border border-slate-200 flex items-center justify-center overflow-hidden shadow-xs shrink-0">
+                      {logoUrl ? (
+                        <img src={logoUrl} alt="Company Logo" className="w-full h-full object-contain p-2" />
+                      ) : (
+                        <div className="text-[10px] text-slate-400 font-extrabold text-center uppercase p-1">No Logo</div>
+                      )}
+                    </div>
+                    <div className="space-y-1.5 flex-1 w-full text-center md:text-left">
+                      <label className="text-xs font-extrabold text-slate-700 block">Company Brand Logo</label>
+                      <span className="text-[10px] text-slate-400 font-semibold block leading-relaxed">
+                        Upload custom logo (PNG/JPEG). Recommended square format. Updates payslip header and login page.
+                      </span>
+                      <div className="flex flex-wrap gap-2.5 justify-center md:justify-start pt-1.5">
+                        <label className="h-9 px-4 bg-primary hover:bg-primary-dark text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5 cursor-pointer transition-all">
+                          <Upload size={14} />
+                          Upload Logo
+                          <input type="file" accept="image/*" onChange={handleLogoChange} className="hidden" />
+                        </label>
+                        {logoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setLogoUrl(undefined)}
+                            className="h-9 px-4 bg-white border border-slate-200 hover:bg-rose-50 text-slate-500 hover:text-rose-600 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+                          >
+                            <Trash2 size={14} />
+                            Remove Logo
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="space-y-1">
                     <label className="text-xs font-extrabold text-slate-700 block">Company Name</label>
                     <input 

@@ -19,6 +19,10 @@ import {
   Settings as SettingsIcon,
   Loader2,
   DollarSign,
+  MapPin,
+  Edit3,
+  Check,
+  X,
 } from 'lucide-react';
 
 import { supabase } from './lib/supabase';
@@ -150,9 +154,24 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
 // Separated so hooks aren't conditional
 const MainLayoutInner = ({ children }: MainLayoutProps) => {
-  const { currentUser, logout, fastAddWorker, areas, addArea } = useHRMSStore();
+  const { currentUser, logout, fastAddWorker, areas, addArea, activeLocation, setActiveLocation } = useHRMSStore();
+  const { company } = usePayrollStore();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [tempLocation, setTempLocation] = useState(activeLocation);
+
+  useEffect(() => {
+    setTempLocation(activeLocation);
+  }, [activeLocation]);
+
+  const handleSaveLocation = () => {
+    if (tempLocation.trim()) {
+      setActiveLocation(tempLocation.trim());
+    }
+    setIsEditingLocation(false);
+  };
 
   const [showGlobalAdd, setShowGlobalAdd] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -214,11 +233,48 @@ const MainLayoutInner = ({ children }: MainLayoutProps) => {
 
       {/* Top Header */}
       <header className="sticky top-0 z-40 w-full glass border-b border-slate-200/50 px-4 md:px-8 py-3.5 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-tr from-primary to-primary-light text-white rounded-lg flex items-center justify-center shadow-md overflow-hidden p-1">
-            <img src="/logo.png" alt="Vyesshrms Logo" className="w-full h-full object-contain" />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-tr from-primary to-primary-light text-white rounded-lg flex items-center justify-center shadow-md overflow-hidden p-1">
+              <img src={company.logoUrl || "/logo.png"} alt="Vyesshrms Logo" className="w-full h-full object-contain" />
+            </div>
+            <span className="font-extrabold text-slate-800 text-sm tracking-tight hidden sm:inline">Vyesshrms</span>
           </div>
-          <span className="font-extrabold text-slate-800 text-sm tracking-tight hidden sm:inline">Vyesshrms</span>
+
+          {/* Editable Location Badge */}
+          <div className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200/85 px-3 py-1.5 rounded-full border border-slate-200/50 transition-all text-xs font-bold text-slate-600">
+            <MapPin size={12} className="text-primary-light flex-shrink-0" />
+            {isEditingLocation ? (
+              <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={tempLocation}
+                  onChange={(e) => setTempLocation(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveLocation();
+                    if (e.key === 'Escape') setIsEditingLocation(false);
+                  }}
+                  className="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs text-slate-800 focus:outline-none focus:border-primary w-28 md:w-36 font-semibold"
+                  autoFocus
+                />
+                <button type="button" onClick={handleSaveLocation} className="text-emerald-600 hover:text-emerald-700 p-0.5 font-extrabold" title="Save">
+                  <Check size={12} />
+                </button>
+                <button type="button" onClick={() => setIsEditingLocation(false)} className="text-rose-500 hover:text-rose-600 p-0.5 font-extrabold" title="Cancel">
+                  <X size={12} />
+                </button>
+              </div>
+            ) : (
+              <div 
+                className="flex items-center gap-1 group cursor-pointer" 
+                onClick={() => { setIsEditingLocation(true); setTempLocation(activeLocation); }}
+                title="Click to edit location"
+              >
+                <span>{activeLocation}</span>
+                <Edit3 size={10} className="opacity-0 group-hover:opacity-100 text-slate-400 transition-opacity ml-0.5" />
+              </div>
+            )}
+          </div>
         </div>
 
         <nav className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
