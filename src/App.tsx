@@ -163,7 +163,8 @@ const MainLayoutInner = ({ children }: MainLayoutProps) => {
   const [tempLocation, setTempLocation] = useState(activeLocation);
 
   useEffect(() => {
-    setTempLocation(activeLocation);
+    const timer = setTimeout(() => setTempLocation(activeLocation), 0);
+    return () => clearTimeout(timer);
   }, [activeLocation]);
 
   const handleSaveLocation = () => {

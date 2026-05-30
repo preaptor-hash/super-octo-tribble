@@ -15,10 +15,11 @@ export const Login: React.FC = () => {
 
   // Load company logo if available in localStorage
   useEffect(() => {
-    const savedLogo = localStorage.getItem('vyess_company_logo');
-    if (savedLogo) {
-      setLogoUrl(savedLogo);
-    }
+    const timer = setTimeout(() => {
+      const savedLogo = localStorage.getItem('vyess_company_logo');
+      if (savedLogo) setLogoUrl(savedLogo);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // If already logged in, skip login page entirely
