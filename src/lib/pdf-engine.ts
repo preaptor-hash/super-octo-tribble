@@ -89,21 +89,13 @@ function drawDefaultLogo(doc: jsPDF): void {
   doc.line(26, 32, 34, 18);
 }
 
-// ─── Draw CONFIDENTIAL diagonal watermark ─────────────────────────
+// ─── Draw CONFIDENTIAL watermark (single, top of page) ────────────
 function drawWatermark(doc: jsPDF): void {
   doc.saveGraphicsState();
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(52);
+  doc.setFontSize(10);
   doc.setTextColor(...C.watermark);
-  const cx = PW / 2;
-  const cy = PH / 2;
-  doc.text('CONFIDENTIAL', cx, cy, {
-    align: 'center',
-    angle: 45,
-  });
-  doc.setFontSize(30);
-  doc.text('CONFIDENTIAL', cx, cy - 40, { align: 'center', angle: 45 });
-  doc.text('CONFIDENTIAL', cx, cy + 40, { align: 'center', angle: 45 });
+  doc.text('CONFIDENTIAL', PW / 2, 6, { align: 'center' });
   doc.restoreGraphicsState();
 }
 
