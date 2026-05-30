@@ -25,6 +25,7 @@ const DEFAULT_COMPANY: CompanyPayrollSettings = {
   enablePasswordProtection: true,
   passwordCase: 'uppercase',
   footerText: 'www.vyessfms.com',
+  workLocation: 'Gurgaon',
 };
 
 const DEFAULT_VOICE_AUTH: VoiceAuthState = {
@@ -48,6 +49,7 @@ function mapCompany(row: Record<string, unknown>): CompanyPayrollSettings {
     enablePasswordProtection: Boolean(row.enable_password_protection ?? true),
     passwordCase:            (row.password_case as 'uppercase' | 'lowercase') ?? 'uppercase',
     footerText:              String(row.footer_text ?? ''),
+    workLocation:            String(row.work_location ?? 'Gurgaon'),
   };
 }
 
@@ -485,6 +487,7 @@ export const usePayrollStore = create<PayrollState>((set, get) => ({
     if (updates.enablePasswordProtection !== undefined) db.enable_password_protection = updates.enablePasswordProtection;
     if (updates.passwordCase             !== undefined) db.password_case             = updates.passwordCase;
     if (updates.footerText               !== undefined) db.footer_text               = updates.footerText;
+    if (updates.workLocation             !== undefined) db.work_location             = updates.workLocation;
 
     if (_companyRowId) {
       await supabase.from('payroll_company_settings').update(db).eq('id', _companyRowId);
@@ -500,6 +503,7 @@ export const usePayrollStore = create<PayrollState>((set, get) => ({
         enable_password_protection: current.enablePasswordProtection,
         password_case:              current.passwordCase,
         footer_text:                current.footerText,
+        work_location:              current.workLocation ?? 'Gurgaon',
       }).select('id').single();
       if (data) set({ _companyRowId: data.id });
     }

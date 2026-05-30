@@ -115,13 +115,18 @@ function drawTitle(doc: jsPDF, payrollMonth: string, y: number): number {
 }
 
 // ─── Draw employee details (2-column grid, matching template) ─────
-function drawEmployeeDetails(doc: jsPDF, record: PayrollRecord, y: number): number {
+function drawEmployeeDetails(
+  doc: jsPDF,
+  record: PayrollRecord,
+  company: CompanyPayrollSettings,
+  y: number
+): number {
   const emp = record.employee;
 
   // Exact fields matching user template
   const fields = [
     { leftL: 'Emp ID :', leftV: emp.employeeId, rightL: 'Employee Name :', rightV: emp.employeeName },
-    { leftL: 'Location :', leftV: emp.workLocation || 'Gurgaon', rightL: 'Grade :', rightV: emp.grade || 'Executive' },
+    { leftL: 'Location :', leftV: emp.workLocation || company.workLocation || 'Gurgaon', rightL: 'Grade :', rightV: emp.grade || 'Executive' },
     { leftL: 'Designation :', leftV: emp.designation, rightL: 'Department :', rightV: emp.department },
     { leftL: 'Bank Name :', leftV: emp.bankName, rightL: 'Bank A\\C No. :', rightV: emp.bankAccountNo },
     { leftL: 'PAN :', leftV: emp.panNumber, rightL: 'Date Of Join :', rightV: emp.dateOfJoining },
@@ -457,7 +462,7 @@ export async function generateVyessPayslipPDF(
   y = drawTitle(doc, record.payrollMonth, y);
 
   // 4. Employee grid table
-  y = drawEmployeeDetails(doc, record, y);
+  y = drawEmployeeDetails(doc, record, company, y);
 
   // 5. Attendance bar
   y = drawAttendance(doc, record, y);

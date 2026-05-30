@@ -132,6 +132,7 @@ export interface CompanyPayrollSettings {
   enablePasswordProtection: boolean;
   passwordCase: 'uppercase' | 'lowercase';
   footerText: string;
+  workLocation?: string;
 }
 
 export interface VoiceAuthState {

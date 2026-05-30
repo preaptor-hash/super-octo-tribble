@@ -66,6 +66,7 @@ export const Settings: React.FC = () => {
   const [enablePasswordProtection, setEnablePasswordProtection] = useState(company.enablePasswordProtection);
   const [passwordCase, setPasswordCase] = useState(company.passwordCase);
   const [footerText, setFooterText] = useState(company.footerText);
+  const [workLocation, setWorkLocation] = useState(company.workLocation || 'Gurgaon');
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -78,6 +79,7 @@ export const Settings: React.FC = () => {
       setEnablePasswordProtection(company.enablePasswordProtection);
       setPasswordCase(company.passwordCase);
       setFooterText(company.footerText);
+      setWorkLocation(company.workLocation || 'Gurgaon');
     });
   }, [company]);
 
@@ -104,6 +106,7 @@ export const Settings: React.FC = () => {
       enablePasswordProtection,
       passwordCase,
       footerText,
+      workLocation,
     });
     // Save to localStorage too so it's visible on login screen immediately
     if (logoUrl) {
@@ -660,6 +663,17 @@ export const Settings: React.FC = () => {
                       value={website}
                       onChange={(e) => setWebsite(e.target.value)}
                       className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white text-slate-800 font-semibold focus:border-primary focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-extrabold text-slate-700 block">Default Payslip Location</label>
+                    <input 
+                      type="text" 
+                      value={workLocation}
+                      onChange={(e) => setWorkLocation(e.target.value)}
+                      className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white text-slate-800 font-semibold focus:border-primary focus:outline-none"
+                      placeholder="e.g. Gurgaon or Trichy"
                     />
                   </div>
 
