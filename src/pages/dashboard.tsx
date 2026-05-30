@@ -548,7 +548,7 @@ export const Dashboard: React.FC = () => {
                   >
                     <Popup>
                       <div className="text-sm font-bold text-slate-800">{w?.full_name || 'Unknown Worker'}</div>
-                      <div className="text-xs font-semibold text-slate-500 mb-1">{new Date(att.check_in_time).toLocaleTimeString()}</div>
+                      <div className="text-xs font-semibold text-slate-500 mb-1">{att.check_in_time ? new Date(att.check_in_time).toLocaleTimeString() : ''}</div>
                       <div className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-600 inline-block uppercase font-bold tracking-wider">{att.type}</div>
                       {att.notes && att.notes.includes('Out of Bounds') && (
                         <div className="mt-1.5 text-[10px] text-rose-600 font-bold bg-rose-50 px-2 py-1 rounded">Out of Bounds Warning</div>

@@ -22,6 +22,7 @@ import {
 
 import { supabase } from './lib/supabase';
 import { useHRMSStore } from './db/store';
+import { usePayrollStore } from './db/payroll-store';
 import { Login } from './pages/login';
 import { Dashboard } from './pages/dashboard';
 import { Workers } from './pages/workers';
@@ -32,7 +33,11 @@ import { Settings } from './pages/settings';
 import { BottomNav } from './components/bottom-nav';
 
 // ─── Auth guard + data bootstrap ─────────────────────────────
-const MainLayout = ({ children }) => {
+interface MainLayoutProps {
+  children: React.ReactNode;
+}
+
+const MainLayout = ({ children }: MainLayoutProps) => {
   const { currentUser, loadAll } = useHRMSStore();
   const [appReady, setAppReady] = useState(false);
 
@@ -79,6 +84,7 @@ const MainLayout = ({ children }) => {
             if (profile && isMounted) {
               useHRMSStore.setState({ currentUser: profile });
               await loadAll();
+              await usePayrollStore.getState().loadAll();
               useHRMSStore.getState().initializeRealtimeSubscriptions();
               setAppReady(true);
             } else if (isMounted) {
@@ -136,7 +142,7 @@ const MainLayout = ({ children }) => {
 };
 
 // Separated so hooks aren't conditional
-const MainLayoutInner = ({ children }) => {
+const MainLayoutInner = ({ children }: MainLayoutProps) => {
   const { currentUser, logout, fastAddWorker, areas, addArea } = useHRMSStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -155,7 +161,7 @@ const MainLayoutInner = ({ children }) => {
   const [newAreaPincode, setNewAreaPincode] = useState('');
   const [newAreaZone, setNewAreaZone] = useState('');
 
-  const handleGlobalFastAdd = async (e) => {
+  const handleGlobalFastAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     const newWorker = await fastAddWorker({

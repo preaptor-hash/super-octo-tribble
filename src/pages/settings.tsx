@@ -11,16 +11,18 @@ import {
   Sliders,
   Save,
   Download,
-  AlertCircle
+  AlertCircle,
+  DollarSign
 } from 'lucide-react';
 import { useHRMSStore } from '../db/store';
+
 import type { Area } from '../types';
 
 export const Settings: React.FC = () => {
   const { areas, addArea, updateArea, deleteArea, resetDatabase, workers, deployments } = useHRMSStore();
   
   // Tab control
-  const [activeTab, setActiveTab] = useState<'areas' | 'policies' | 'system'>('areas');
+  const [activeTab, setActiveTab] = useState<'areas' | 'policies' | 'system' | 'payroll'>('areas');
 
   // New Area form state
   const [newAreaName, setNewAreaName] = useState('');
@@ -48,6 +50,8 @@ export const Settings: React.FC = () => {
 
   // Reset database confirmation modal
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+
 
   const handleAddAreaSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,6 +162,18 @@ export const Settings: React.FC = () => {
           >
             <Database size={16} />
             System & Diagnostics
+          </button>
+
+          <button
+            onClick={() => setActiveTab('payroll')}
+            className={`w-full flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${
+              activeTab === 'payroll' 
+                ? 'bg-primary text-white shadow-md animate-pulse-soft' 
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
+            }`}
+          >
+            <DollarSign size={16} />
+            Payroll Console
           </button>
           
           <div className="border-t border-slate-200/40 my-3 pt-3 px-3">
@@ -521,7 +537,7 @@ export const Settings: React.FC = () => {
                 <div>
                   <h2 className="text-lg font-bold text-slate-900 leading-tight">Data Maintenance & Controls</h2>
                   <p className="text-xs text-slate-400 font-semibold mt-0.5">
-                    Perform system backup operations, download local storage database, or factory reset seed values.
+                    Perform system backup operations, export a snapshot of Supabase data, or factory reset the workforce registry.
                   </p>
                 </div>
 
@@ -529,8 +545,8 @@ export const Settings: React.FC = () => {
                   {/* Backup Panel */}
                   <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                      <h3 className="text-xs font-extrabold text-slate-800">Export State JSON Database Backup</h3>
-                      <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">Download a secure JSON copy of all local rosters, attendance checklists, and area centroids.</span>
+                      <h3 className="text-xs font-extrabold text-slate-800">Export Supabase Data Snapshot</h3>
+                      <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">Download a secure JSON copy of all cloud-synced rosters, attendance checklists, and area centroids.</span>
                     </div>
                     <button
                       onClick={handleExportData}
