@@ -347,8 +347,8 @@ export const usePayrollStore = create<PayrollState>((set, get) => ({
     await supabase.from('payroll_records').update({
       status,
       updated_at:   now,
-      generated_at: status === 'generated' ? now : undefined,
-      paid_at:      status === 'paid'      ? now : undefined,
+      generated_at: status === 'generated' ? now : null,
+      paid_at:      status === 'paid'      ? now : null,
     }).eq('id', id);
   },
 
@@ -489,9 +489,17 @@ export const usePayrollStore = create<PayrollState>((set, get) => ({
     if (_companyRowId) {
       await supabase.from('payroll_company_settings').update(db).eq('id', _companyRowId);
     } else {
+      const current = get().company;
       const { data } = await supabase.from('payroll_company_settings').insert({
-        ...db,
-        company_name: get().company.companyName,
+        company_name:               current.companyName,
+        company_address:            current.companyAddress,
+        contact_numbers:            current.contactNumbers,
+        email:                      current.email,
+        website:                    current.website,
+        logo_url:                   current.logoUrl ?? null,
+        enable_password_protection: current.enablePasswordProtection,
+        password_case:              current.passwordCase,
+        footer_text:                current.footerText,
       }).select('id').single();
       if (data) set({ _companyRowId: data.id });
     }
@@ -514,6 +522,7 @@ export const usePayrollStore = create<PayrollState>((set, get) => ({
       is_enrolled:   true,
       enrolled_hash: hash,
       passphrase,
+      security_mode: updated.securityMode,
       attempt_count: 0,
       is_locked:     false,
     };
@@ -578,7 +587,7 @@ export const usePayrollStore = create<PayrollState>((set, get) => ({
   // ── Computed ──────────────────────────────────────────────────
   getPayrollStats: () => {
     const { records } = get();
-    const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+    const currentMonth = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
     const thisMonthRecords = records.filter(r => r.payrollMonth === currentMonth);
 
     return {

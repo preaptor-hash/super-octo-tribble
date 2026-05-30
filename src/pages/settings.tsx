@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Settings as SettingsIcon,
   MapPin, 
@@ -12,9 +12,11 @@ import {
   Save,
   Download,
   AlertCircle,
-  DollarSign
+  DollarSign,
+  Shield
 } from 'lucide-react';
 import { useHRMSStore } from '../db/store';
+import { usePayrollStore } from '../db/payroll-store';
 
 import type { Area } from '../types';
 
@@ -50,6 +52,45 @@ export const Settings: React.FC = () => {
 
   // Reset database confirmation modal
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  const { company, updateCompany } = usePayrollStore();
+
+  // Company settings state
+  const [companyName, setCompanyName] = useState(company.companyName);
+  const [companyAddress, setCompanyAddress] = useState(company.companyAddress);
+  const [contactNumbers, setContactNumbers] = useState(company.contactNumbers);
+  const [email, setEmail] = useState(company.email);
+  const [website, setWebsite] = useState(company.website);
+  const [enablePasswordProtection, setEnablePasswordProtection] = useState(company.enablePasswordProtection);
+  const [passwordCase, setPasswordCase] = useState(company.passwordCase);
+  const [footerText, setFooterText] = useState(company.footerText);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setCompanyName(company.companyName);
+      setCompanyAddress(company.companyAddress);
+      setContactNumbers(company.contactNumbers);
+      setEmail(company.email);
+      setWebsite(company.website);
+      setEnablePasswordProtection(company.enablePasswordProtection);
+      setPasswordCase(company.passwordCase);
+      setFooterText(company.footerText);
+    });
+  }, [company]);
+
+  const handleSaveCompany = async () => {
+    await updateCompany({
+      companyName,
+      companyAddress,
+      contactNumbers,
+      email,
+      website,
+      enablePasswordProtection,
+      passwordCase,
+      footerText,
+    });
+    alert('Company payroll settings successfully saved to Supabase!');
+  };
 
 
 
@@ -509,6 +550,130 @@ export const Settings: React.FC = () => {
                   <Save size={14} />
                   Save Preferences
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: COMPANY PAYROLL SETTINGS */}
+          {activeTab === 'payroll' && (
+            <div className="space-y-6 animate-slide-up text-left">
+              <div className="glass rounded-3xl border border-slate-200/50 p-6 shadow-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <Building size={18} className="text-primary" />
+                  <h2 className="text-lg font-bold text-slate-900 leading-tight">Company Payslip Configuration</h2>
+                </div>
+                <p className="text-xs text-slate-400 font-semibold mb-6">
+                  Edit corporate identity, contact coordinates, and security rules stamped on PDF payslips.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-extrabold text-slate-700 block">Company Name</label>
+                    <input 
+                      type="text" 
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white text-slate-800 font-semibold focus:border-primary focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-extrabold text-slate-700 block">Contact Numbers</label>
+                    <input 
+                      type="text" 
+                      value={contactNumbers}
+                      onChange={(e) => setContactNumbers(e.target.value)}
+                      className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white text-slate-800 font-semibold focus:border-primary focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-extrabold text-slate-700 block">Email Address</label>
+                    <input 
+                      type="email" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white text-slate-800 font-semibold focus:border-primary focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-extrabold text-slate-700 block">Website URL</label>
+                    <input 
+                      type="text" 
+                      value={website}
+                      onChange={(e) => setWebsite(e.target.value)}
+                      className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white text-slate-800 font-semibold focus:border-primary focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 space-y-1">
+                    <label className="text-xs font-extrabold text-slate-700 block">Company Address</label>
+                    <textarea 
+                      value={companyAddress}
+                      onChange={(e) => setCompanyAddress(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl p-3 text-xs bg-white text-slate-800 font-semibold focus:border-primary focus:outline-none"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 border-t border-slate-200/50 pt-4 mt-2 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Shield size={16} className="text-primary" />
+                      <h3 className="text-sm font-extrabold text-slate-800">Security & PDF Protection Rules</h3>
+                    </div>
+                    
+                    <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <div>
+                        <label className="text-xs font-extrabold text-slate-800 block">Password Protection</label>
+                        <span className="text-[10px] text-slate-400 font-semibold block">Force PDF payslips to require employee name to open</span>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={enablePasswordProtection} 
+                          onChange={(e) => setEnablePasswordProtection(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                      </label>
+                    </div>
+
+                    {enablePasswordProtection && (
+                      <div className="space-y-1 max-w-xs animate-slide-up">
+                        <label className="text-xs font-extrabold text-slate-700 block">Password Character Case</label>
+                        <select
+                          value={passwordCase}
+                          onChange={(e) => setPasswordCase(e.target.value as 'uppercase' | 'lowercase')}
+                          className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white text-slate-800 font-semibold focus:outline-none"
+                        >
+                          <option value="uppercase">UPPERCASE (e.g. MANIKANDANS)</option>
+                          <option value="lowercase">lowercase (e.g. manikandans)</option>
+                        </select>
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-extrabold text-slate-700 block">Payslip Footer Text</label>
+                      <input 
+                        type="text" 
+                        value={footerText}
+                        onChange={(e) => setFooterText(e.target.value)}
+                        className="w-full h-10 border border-slate-200 rounded-xl px-3 text-xs bg-white text-slate-800 font-semibold focus:border-primary focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-5 border-t border-slate-100 mt-6">
+                  <button
+                    onClick={handleSaveCompany}
+                    className="flex items-center gap-1.5 px-5 py-3 bg-gradient-to-tr from-primary to-primary-light text-white text-xs font-extrabold rounded-2xl shadow-premium"
+                  >
+                    <Save size={14} />
+                    Save Company Settings
+                  </button>
+                </div>
               </div>
             </div>
           )}

@@ -18,6 +18,7 @@ import {
   AlertCircle,
   Settings as SettingsIcon,
   Loader2,
+  DollarSign,
 } from 'lucide-react';
 
 import { supabase } from './lib/supabase';
@@ -31,6 +32,12 @@ import { Attendance } from './pages/attendance';
 import { Deployments } from './pages/deployments';
 import { Settings } from './pages/settings';
 import { BottomNav } from './components/bottom-nav';
+import { PayrollDashboard } from './pages/payroll/payroll-dashboard';
+import { PayrollGenerator } from './pages/payroll/payroll-generator';
+import { PayrollHistory } from './pages/payroll/payroll-history';
+import { SalaryTemplates } from './pages/payroll/salary-templates';
+import { EmployeeProfiles } from './pages/payroll/employee-profiles';
+import { PayrollReports } from './pages/payroll/payroll-reports';
 
 // ─── Auth guard + data bootstrap ─────────────────────────────
 interface MainLayoutProps {
@@ -218,6 +225,7 @@ const MainLayoutInner = ({ children }: MainLayoutProps) => {
           {[
             { to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={14} />, exact: true },
             { to: '/workers', label: 'Workers', icon: <Users size={14} />, exact: false },
+            { to: '/payroll', label: 'Payroll', icon: <DollarSign size={14} />, exact: false },
             { to: '/attendance', label: 'Attendance', icon: <CalendarCheck size={14} />, exact: true },
             { to: '/deployments', label: 'Deployments', icon: <Briefcase size={14} />, exact: true },
             { to: '/settings', label: 'Settings', icon: <SettingsIcon size={14} />, exact: true },
@@ -414,6 +422,13 @@ export const App = () => (
       <Route path="/attendance" element={<MainLayout><Attendance /></MainLayout>} />
       <Route path="/deployments" element={<MainLayout><Deployments /></MainLayout>} />
       <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
+      <Route path="/payroll" element={<MainLayout><PayrollDashboard /></MainLayout>} />
+      <Route path="/payroll/generate" element={<MainLayout><PayrollGenerator /></MainLayout>} />
+      <Route path="/payroll/generate/:id" element={<MainLayout><PayrollGenerator /></MainLayout>} />
+      <Route path="/payroll/history" element={<MainLayout><PayrollHistory /></MainLayout>} />
+      <Route path="/payroll/templates" element={<MainLayout><SalaryTemplates /></MainLayout>} />
+      <Route path="/payroll/profiles" element={<MainLayout><EmployeeProfiles /></MainLayout>} />
+      <Route path="/payroll/reports" element={<MainLayout><PayrollReports /></MainLayout>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   </Router>

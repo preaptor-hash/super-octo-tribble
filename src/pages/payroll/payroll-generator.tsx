@@ -19,8 +19,17 @@ import type {
   PaymentDetail,
   AttendanceData,
   EmployeePayrollDetails,
-  PayrollCalculation
+  PayrollCalculation,
+  PayrollRecord,
 } from '../../payroll-types';
+
+// ─── Tiny icon helper (hoisted so it can be used in JSX below) ──────
+const TrendingDownIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+    <polyline points="17 18 23 18 23 12" />
+  </svg>
+);
 
 // ─── Section Accordion ────────────────────────────────────────────
 const Section: React.FC<{
@@ -134,32 +143,33 @@ export const PayrollGenerator: React.FC<PayrollGeneratorProps> = ({ id: propId, 
     mode: '', disbursementDate: '', bank: '', accountNo: '', amount: 0, notes: '',
   });
 
-  // Load existing record
+  // Load existing record on mount / id change only
   useEffect(() => {
-    if (id) {
-      const record = getPayroll(id);
-      if (record) {
-        Promise.resolve().then(() => {
-          setEmp(record.employee);
-          setAtt(record.attendance);
-          setEarnings(record.earnings);
-          setDeductions(record.deductions);
-          setLoans(record.loans);
-          setPayment(record.payment);
-          const [month, year] = record.payrollMonth.split(' ');
-          setPayrollMonth(month);
-          setPayrollYear(parseInt(year));
-          setSavedId(id);
-        });
-      }
-    }
-  }, [id, getPayroll]);
+    if (!id) return;
+    const record = getPayroll(id);
+    if (!record) return;
+    // Defer batch state initialization out of the synchronous effect body
+    queueMicrotask(() => {
+      setEmp(record.employee);
+      setAtt(record.attendance);
+      setEarnings(record.earnings);
+      setDeductions(record.deductions);
+      setLoans(record.loans);
+      setPayment(record.payment);
+      const [month, year] = record.payrollMonth.split(' ');
+      setPayrollMonth(month);
+      setPayrollYear(parseInt(year));
+      setSavedId(id);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // intentionally omit getPayroll — it is a stable Zustand selector
 
   // Toggle section
   const toggleSection = (key: keyof typeof openSections) =>
     setOpenSections((s) => ({ ...s, [key]: !s[key] }));
 
   // ── Calculations ───────────────────────────────────────────────
+  // NOTE: We compute derived values immutably — never mutate earnings/deductions state directly.
   const calc = useCallback((): PayrollCalculation => {
     const basicRow = earnings.find((e) => e.name.toLowerCase().includes('basic'));
     const basicSalary = basicRow?.amount || 0;
@@ -168,23 +178,28 @@ export const PayrollGenerator: React.FC<PayrollGeneratorProps> = ({ id: propId, 
     const absentDeduction = perDaySalary * att.absentDays;
     const overtimeAmount = att.overtimeHours * att.overtimeRate;
 
-    // Auto-update OT in earnings if exists
-    const otRow = earnings.find((e) => e.name.toLowerCase().includes('overtime'));
-    if (otRow && overtimeAmount > 0) otRow.amount = overtimeAmount;
+    // Build effective earning amounts without mutating state
+    const effectiveEarnings = earnings.map((e) => {
+      if (e.name.toLowerCase().includes('overtime') && overtimeAmount > 0) {
+        return { ...e, amount: overtimeAmount };
+      }
+      return e;
+    });
 
-    const grossEarnings = earnings.reduce((s, e) => s + (e.amount || 0), 0);
+    const grossEarnings = effectiveEarnings.reduce((s, e) => s + (e.amount || 0), 0);
 
-    // Auto-calc PF and ESI
-    const pfRow = deductions.find((d) => d.name.toLowerCase().includes('provident') || d.name.toLowerCase() === 'pf');
-    if (pfRow && pfRow.rate === '12%') {
-      pfRow.amount = Math.round(basicSalary * 0.12);
-    }
-    const esiRow = deductions.find((d) => d.name.toLowerCase() === 'esi' || d.name.toLowerCase().includes('esic'));
-    if (esiRow && esiRow.rate === '0.75%') {
-      esiRow.amount = Math.round(grossEarnings * 0.0075);
-    }
+    // Build effective deduction amounts without mutating state
+    const effectiveDeductions = deductions.map((d) => {
+      if ((d.name.toLowerCase().includes('provident') || d.name.toLowerCase() === 'pf') && d.rate === '12%') {
+        return { ...d, amount: Math.round(basicSalary * 0.12) };
+      }
+      if ((d.name.toLowerCase() === 'esi' || d.name.toLowerCase().includes('esic')) && d.rate === '0.75%') {
+        return { ...d, amount: Math.round(grossEarnings * 0.0075) };
+      }
+      return d;
+    });
 
-    const totalDeductions = deductions.reduce((s, d) => s + (d.amount || 0), 0);
+    const totalDeductions = effectiveDeductions.reduce((s, d) => s + (d.amount || 0), 0);
     const netSalary = Math.max(0, grossEarnings - totalDeductions);
 
     return { perDaySalary, presentEarnings, absentDeduction, overtimeAmount, grossEarnings, totalDeductions, netSalary };
@@ -702,13 +717,5 @@ export const PayrollGenerator: React.FC<PayrollGeneratorProps> = ({ id: propId, 
     </div>
   );
 };
-
-// Tiny icon helper
-const TrendingDownIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
-    <polyline points="17 18 23 18 23 12" />
-  </svg>
-);
 
 export default PayrollGenerator;
